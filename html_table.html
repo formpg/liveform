@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>きっかけ表</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <a href="index.html">フォーム提出</a>
+  <a href="table.html" class="active">きっかけ表</a>
+  <a href="admin.html">ライブ管理</a>
+</nav>
+
+<main>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+    <h1>きっかけ表</h1>
+    <button onclick="window.print()" id="print-btn" style="display:none;">印刷 / PDF保存</button>
+  </div>
+
+  <div id="live-btns" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;"></div>
+
+  <p id="empty-msg" style="color:#888; display:none;">まだ提出がありません</p>
+
+  <div style="overflow-x:auto; margin-bottom:24px;">
+    <table id="kikkake-table" style="display:none; border-collapse:collapse; font-size:13px; width:100%;">
+      <thead>
+        <tr>
+          <th>出番</th><th>コンビ名</th><th>形式</th><th>③道具</th><th>④板付</th>
+          <th>⑤音響</th><th>⑤照明</th><th>⑥明転</th><th>⑦暗転</th><th>⑧出囃子</th>
+          <th>音源</th><th>台本</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+
+  <div id="on-box" style="display:none; background:#fffbea; border:1px solid #ffc107; border-radius:8px; padding:12px 14px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+      <span style="font-weight:500; color:#856404; font-size:13px;">音響担当者（日置汐穏）へ</span>
+      <button onclick="copyOnText()" style="font-size:12px;">コピー</button>
+    </div>
+    <pre id="on-text" style="font-size:12px; color:#666; white-space:pre-wrap; line-height:1.7;"></pre>
+  </div>
+</main>
+
+<style>
+@media print { nav, button { display:none!important; } }
+#kikkake-table th {
+  padding:8px 10px; background:#f5f5f5; border-bottom:2px solid #ddd;
+  text-align:left; white-space:nowrap; font-weight:500; color:#555;
+}
+#kikkake-table td { padding:8px 10px; border-bottom:1px solid #eee; white-space:nowrap; }
+.badge-warn { background:#fff3cd; color:#856404; padding:2px 8px; border-radius:99px; font-size:12px; }
+.badge-ok   { background:#d1e7dd; color:#0f5132; padding:2px 8px; border-radius:99px; font-size:12px; }
+.badge-info { background:#cfe2ff; color:#084298; padding:2px 8px; border-radius:99px; font-size:12px; }
+.badge-updated { background:#fff3cd; color:#856404; padding:2px 6px; border-radius:99px; font-size:11px; margin-left:6px; }
+.muted { color:#ccc; }
+</style>
+
+<script>
+const SUPABASE_URL = 'YOUR_SUPABASE_URL'
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+let currentEntries = []
+
+async function init() {
+  const { data: lives } = await sb.from('lives').select('*').order('created_at', { ascending: false })
+  const container = document.getElementById('live-btns')
+  ;(lives || []).forEach(l => {
+    const btn = document.createElement('button')
+    btn.textContent = l.name
+    btn.className = 'tog-btn'
+    btn.onclick = () => loadEntries(l.id, btn)
+    container.appendChild(btn)
+  })
+}
+
+async function loadEntries(liveId, btn) {
+  document.querySelectorAll('#live-btns .tog-btn').forEach(b => b.classList.remove('active-info'))
+  btn.classList.add('active-info')
+  document.getElementById('print-btn').style.display = 'inline-block'
+
+  const { data } = await sb.from('entries').select('*').eq('live_id', liveId)
+    .order('order', { ascending: true })
+  currentEntries = data || []
+
+  const tbody = document.getElementById('table-body')
+  tbody.innerHTML = ''
+
+  if (!currentEntries.length) {
+    document.getElementById('kikkake-table').style.display = 'none'
+    document.getElementById('empty-msg').style.display = 'block'
+    document.getElementById('on-box').style.display = 'none'
+    return
+  }
+
+  document.getElementById('empty-msg').style.display = 'none'
+  document.getElementById('kikkake-table').style.display = 'table'
+
+  currentEntries.forEach(e => {
+    const tr = document.createElement('tr')
+    const onUrl = e.on_file_path ? sb.storage.from('kikkake-files').getPublicUrl(e.on_file_path).data.publicUrl : null
+    const scriptUrl = e.script_file_path ? sb.storage.from('kikkake-files').getPublicUrl(e.script_file_path).data.publicUrl : null
+
+    tr.innerHTML = `
+      <td>${e.order ?? '<span class="muted">−</span>'}</td>
+      <td style="font-weight:500;">${e.combi_name}${e.is_updated ? '<span class="badge-updated">更新</span>' : ''}</td>
+      <td>${e.format ? `<span class="badge-info">${e.format}</span>` : '<span class="muted">−</span>'}</td>
+      <td>${e.tools || '<span class="muted">−</span>'}</td>
+      <td>${e.itatsuki || '<span class="muted">−</span>'}</td>
+      <td>${e.chuku_on === '有り' ? '<span class="badge-warn">有り</span>' : e.chuku_on === '無し' ? '<span class="badge-ok">無し</span>' : '<span class="muted">−</span>'}</td>
+      <td>${e.chuku_hari === '有り' ? '<span class="badge-warn">有り</span>' : e.chuku_hari === '無し' ? '<span class="badge-ok">無し</span>' : '<span class="muted">−</span>'}</td>
+      <td>${e.meiten_kikake || '<span class="muted">−</span>'}</td>
+      <td>${e.anten_kikake || '<span class="muted">−</span>'}</td>
+      <td>${e.debayashi_full || '<span class="muted">−</span>'}</td>
+      <td>${onUrl ? `<a href="${onUrl}" target="_blank" style="color:#0d6efd; font-size:12px;">DL</a>` : '<span class="muted">−</span>'}</td>
+      <td>${scriptUrl ? `<a href="${scriptUrl}" target="_blank" style="color:#0d6efd; font-size:12px;">DL</a>` : '<span class="muted">−</span>'}</td>
+    `
+    tbody.appendChild(tr)
+  })
+
+  // 音響テキスト
+  const onNeeded = currentEntries.filter(e => e.chuku_on === '有り')
+  const onText = onNeeded.length
+    ? onNeeded.map(e => `【${e.combi_name} ${e.order ?? ''}番目】\n音源: ${e.on_file_path ? '添付あり' : '要確認'}\n暗転: ${e.anten_kikake || '未記入'}`).join('\n\n')
+    : '途中音響あり組なし'
+  document.getElementById('on-text').textContent = onText
+  document.getElementById('on-box').style.display = 'block'
+}
+
+function copyOnText() {
+  navigator.clipboard.writeText(document.getElementById('on-text').textContent)
+    .then(() => alert('コピーしました！'))
+}
+
+init()
+</script>
+</body>
+</html>

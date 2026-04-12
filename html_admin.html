@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ライブ管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <a href="index.html">フォーム提出</a>
+  <a href="table.html">きっかけ表</a>
+  <a href="admin.html" class="active">ライブ管理</a>
+</nav>
+
+<main>
+  <!-- ログイン画面 -->
+  <div id="login-screen" style="max-width:320px; margin:4rem auto; text-align:center;">
+    <h2 style="margin-bottom:16px;">管理者ログイン</h2>
+    <input type="password" id="pw-input" placeholder="パスワード" onkeydown="if(event.key==='Enter') login()">
+    <button onclick="login()" class="btn-primary" style="margin-top:12px; width:100%;">ログイン</button>
+  </div>
+
+  <!-- 管理画面 -->
+  <div id="admin-screen" style="display:none; max-width:560px;">
+    <h1 style="margin-bottom:20px;">ライブ管理</h1>
+
+    <div class="box" style="margin-bottom:24px;">
+      <p class="hint" style="margin-bottom:12px;">新しいライブを追加</p>
+      <div class="field">
+        <label>ライブ名 <span class="req">*</span></label>
+        <input id="live-name" placeholder="例: vol.2 きっかけ確認">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div class="field">
+          <label>開催日</label>
+          <input type="date" id="live-date">
+        </div>
+        <div class="field">
+          <label>提出締切</label>
+          <input type="datetime-local" id="live-deadline">
+        </div>
+      </div>
+      <button onclick="addLive()" class="btn-primary" style="width:100%;">ライブを作成</button>
+    </div>
+
+    <p class="hint" id="live-count" style="margin-bottom:12px;"></p>
+    <div id="live-list"></div>
+  </div>
+</main>
+
+<script>
+const SUPABASE_URL = 'YOUR_SUPABASE_URL'
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'
+const ADMIN_PASSWORD = 'YOUR_ADMIN_PASSWORD'
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+function login() {
+  const pw = document.getElementById('pw-input').value
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('login-screen').style.display = 'none'
+    document.getElementById('admin-screen').style.display = 'block'
+    fetchLives()
+  } else {
+    alert('パスワードが違います')
+  }
+}
+
+async function fetchLives() {
+  const { data } = await sb.from('lives').select('*').order('created_at', { ascending: false })
+  const list = document.getElementById('live-list')
+  document.getElementById('live-count').textContent = `作成済みライブ（${(data||[]).length}件）`
+  list.innerHTML = ''
+  if (!data || !data.length) {
+    list.innerHTML = '<p style="color:#ccc;">まだライブがありません</p>'
+    return
+  }
+  data.forEach(l => {
+    const div = document.createElement('div')
+    div.style.cssText = 'border:1px solid #eee; border-radius:8px; padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;'
+    const dateStr = [l.date ? `開催: ${l.date}` : '', l.deadline ? `締切: ${l.deadline.replace('T',' ').slice(0,16)}` : ''].filter(Boolean).join(' ・ ')
+    div.innerHTML = `
+      <div>
+        <p style="font-weight:500;">${l.name}</p>
+        ${dateStr ? `<p style="font-size:12px; color:#888; margin-top:2px;">${dateStr}</p>` : ''}
+      </div>
+      <button onclick="deleteLive('${l.id}','${l.name.replace(/'/g,"\\'")}') " style="color:#dc3545; border-color:#dc3545; font-size:13px;">削除</button>
+    `
+    list.appendChild(div)
+  })
+}
+
+async function addLive() {
+  const name = document.getElementById('live-name').value.trim()
+  if (!name) { alert('ライブ名を入力してください'); return }
+  const date = document.getElementById('live-date').value || null
+  const deadline = document.getElementById('live-deadline').value || null
+  await sb.from('lives').insert({ name, date, deadline })
+  document.getElementById('live-name').value = ''
+  document.getElementById('live-date').value = ''
+  document.getElementById('live-deadline').value = ''
+  fetchLives()
+}
+
+async function deleteLive(id, name) {
+  if (!confirm(`「${name}」を削除しますか？\n提出データも全て消えます`)) return
+  await sb.from('lives').delete().eq('id', id)
+  fetchLives()
+}
+</script>
+</body>
+</html>
