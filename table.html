@@ -8,10 +8,8 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav>
-  <a href="form.html">フォーム提出</a>
-  <a href="table.html" class="active">きっかけ表</a>
-  <a href="mypage.html">マイページ</a>
+<nav id="main-nav">
+  <!-- ロールに応じて動的に生成 -->
   <div class="nav-right">
     <span class="nav-user" id="nav-user"></span>
     <button class="btn-sm" onclick="logout()">ログアウト</button>
@@ -36,13 +34,6 @@
       <tbody id="table-body"></tbody>
     </table>
   </div>
-  <div id="on-box" style="display:none;background:#fffbea;border:1px solid #ffc107;border-radius:8px;padding:12px 14px;">
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <span style="font-weight:500;color:#856404;font-size:13px;">音響担当者（日置汐穏）へ</span>
-      <button onclick="copyOnText()" style="font-size:12px;">コピー</button>
-    </div>
-    <pre id="on-text" style="font-size:12px;color:#666;white-space:pre-wrap;line-height:1.7;"></pre>
-  </div>
 </main>
 <style>@media print{nav,button{display:none!important}}</style>
 <script>
@@ -52,35 +43,79 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession()
-  if (!session) { location.href='index.html'; return }
-  const { data: profile } = await sb.from('profiles').select('*').eq('id',session.user.id).single()
+  if (!session) { location.href = 'index.html'; return }
+
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single()
+  const role = profile?.role || 'performer'
   document.getElementById('nav-user').textContent = profile?.display_name || session.user.email
-  const { data: lives } = await sb.from('lives').select('*').order('created_at',{ascending:false})
+
+  // ロールに応じてナビを生成
+  const nav = document.getElementById('main-nav')
+  if (role === 'staff') {
+    nav.innerHTML = `
+      <a href="staff.html">スタッフページ</a>
+      <a href="table.html" class="active">きっかけ表</a>
+      <div class="nav-right">
+        <span class="nav-user">${profile?.display_name || session.user.email}</span>
+        <button class="btn-sm" onclick="logout()">ログアウト</button>
+      </div>`
+  } else {
+    nav.innerHTML = `
+      <a href="form.html">フォーム提出</a>
+      <a href="table.html" class="active">きっかけ表</a>
+      <a href="mypage.html">マイページ</a>
+      <div class="nav-right">
+        <span class="nav-user">${profile?.display_name || session.user.email}</span>
+        <button class="btn-sm" onclick="logout()">ログアウト</button>
+      </div>`
+  }
+
+  // スタッフは担当ライブのみ、演者は全ライブ表示
+  let lives = []
+  if (role === 'staff') {
+    const { data: sl } = await sb.from('staff_lives').select('live_id').eq('user_id', session.user.id)
+    const myIds = (sl || []).map(s => s.live_id)
+    if (myIds.length) {
+      const { data } = await sb.from('lives').select('*').in('id', myIds).order('created_at', { ascending: false })
+      lives = data || []
+    }
+  } else {
+    const { data } = await sb.from('lives').select('*').order('created_at', { ascending: false })
+    lives = data || []
+  }
+
   const container = document.getElementById('live-btns')
-  ;(lives||[]).forEach(l => {
+  if (!lives.length) {
+    container.innerHTML = '<p class="hint">表示できるライブがありません</p>'
+    return
+  }
+  lives.forEach(l => {
     const btn = document.createElement('button')
-    btn.textContent = l.name; btn.className = 'tog-btn'
+    btn.textContent = l.name
+    btn.className = 'tog-btn'
     btn.onclick = () => loadEntries(l.id, btn)
     container.appendChild(btn)
   })
 }
 
 async function loadEntries(liveId, btn) {
-  document.querySelectorAll('#live-btns .tog-btn').forEach(b=>b.classList.remove('active-info'))
+  document.querySelectorAll('#live-btns .tog-btn').forEach(b => b.classList.remove('active-info'))
   btn.classList.add('active-info')
   document.getElementById('print-btn').style.display = 'inline-block'
-  const { data } = await sb.from('entries').select('*').eq('live_id',liveId).order('order',{ascending:true})
+
+  const { data } = await sb.from('entries').select('*').eq('live_id', liveId).order('order', { ascending: true })
   const entries = data || []
   const tbody = document.getElementById('table-body')
   tbody.innerHTML = ''
+
   if (!entries.length) {
     document.getElementById('kikkake-table').style.display = 'none'
     document.getElementById('empty-msg').style.display = 'block'
-    document.getElementById('on-box').style.display = 'none'
     return
   }
   document.getElementById('empty-msg').style.display = 'none'
   document.getElementById('kikkake-table').style.display = 'table'
+
   entries.forEach(e => {
     const onUrl = e.on_file_path ? sb.storage.from('kikkake-files').getPublicUrl(e.on_file_path).data.publicUrl : null
     const scriptUrl = e.script_file_path ? sb.storage.from('kikkake-files').getPublicUrl(e.script_file_path).data.publicUrl : null
@@ -95,23 +130,15 @@ async function loadEntries(liveId, btn) {
       <td>${e.chuku_hari === '有り' ? '<span class="badge badge-warn">有り</span>' : e.chuku_hari === '無し' ? '<span class="badge badge-ok">無し</span>' : '<span class="muted">−</span>'}</td>
       <td>${e.meiten_kikake || '<span class="muted">−</span>'}</td>
       <td>${e.anten_kikake || '<span class="muted">−</span>'}</td>
-      <td>${e.debayashi_full || '<span class="muted">−</span>'}</td>
+      <td style="white-space:nowrap;">${e.debayashi_full || '<span class="muted">−</span>'}</td>
       <td>${onUrl ? `<a href="${onUrl}" target="_blank" download style="color:#0d6efd;font-size:12px;">DL</a>` : '<span class="muted">−</span>'}</td>
       <td>${scriptUrl ? `<a href="${scriptUrl}" target="_blank" download style="color:#0d6efd;font-size:12px;">DL</a>` : '<span class="muted">−</span>'}</td>
     `
     tbody.appendChild(tr)
   })
-  const onNeeded = entries.filter(e => e.chuku_on === '有り')
-  document.getElementById('on-text').textContent = onNeeded.length
-    ? onNeeded.map(e => `【${e.combi_name} ${e.order ?? ''}番目】\n音源: ${e.on_file_path ? '添付あり' : '要確認'}\n暗転: ${e.anten_kikake || '未記入'}`).join('\n\n')
-    : '途中音響あり組なし'
-  document.getElementById('on-box').style.display = 'block'
 }
 
-function copyOnText() {
-  navigator.clipboard.writeText(document.getElementById('on-text').textContent).then(() => alert('コピーしました！'))
-}
-function logout() { sb.auth.signOut().then(() => location.href='index.html') }
+function logout() { sb.auth.signOut().then(() => location.href = 'index.html') }
 init()
 </script>
 </body>
