@@ -80,6 +80,7 @@ async function init() {
   user=session.user
   const { data: profile } = await sb.from('profiles').select('*').eq('id',user.id).single()
   document.getElementById('nav-user').textContent=profile?.display_name||user.email
+  if (profile?.role==='staff') { location.href='staff.html'; return }
   fetchUnits()
 }
 
