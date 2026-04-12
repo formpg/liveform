@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイページ</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <a href="form.html">フォーム提出</a>
+  <a href="table.html">きっかけ表</a>
+  <a href="mypage.html" class="active">マイページ</a>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-user"></span>
+    <button class="btn-sm" onclick="logout()">ログアウト</button>
+  </div>
+</nav>
+<main>
+  <h1 style="margin-bottom:20px;">マイページ</h1>
+  <div class="card" style="margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="margin-bottom:0;">ユニット</h2>
+      <button onclick="showAddUnit()" class="btn-sm">＋ 追加</button>
+    </div>
+    <div id="unit-list"><p class="hint">読み込み中...</p></div>
+    <div id="add-unit-form" style="display:none; margin-top:16px; border-top:1px solid #eee; padding-top:16px;">
+      <div class="field"><label>ユニット名</label><input id="new-unit-name" placeholder="例: 誕生石"></div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="addUnit()" class="btn-primary btn-sm">作成</button>
+        <button onclick="hideAddUnit()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="neta-section" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="margin-bottom:0;">ネタ一覧 <span id="selected-unit-name" style="font-size:14px; color:#888;"></span></h2>
+      <button onclick="showAddNeta()" class="btn-sm">＋ 追加</button>
+    </div>
+    <div id="neta-list"></div>
+    <div id="neta-form" style="display:none; margin-top:16px; border-top:1px solid #eee; padding-top:16px;">
+      <h3 id="neta-form-title">ネタを追加</h3>
+      <input type="hidden" id="edit-neta-id">
+      <div class="field"><label>ネタタイトル <span class="req">*</span></label><input id="neta-title" placeholder="例: 病院コント"></div>
+      <div class="field">
+        <label>形式</label>
+        <div class="btn-group" id="neta-format-group">
+          <button class="tog-btn" onclick="setNetaFormat('漫才')">漫才</button>
+          <button class="tog-btn" onclick="setNetaFormat('ピン')">ピン</button>
+          <button class="tog-btn" onclick="setNetaFormat('コント')">コント</button>
+        </div>
+      </div>
+      <div class="field"><label>机</label><div class="btn-group" id="desk-group"><button class="tog-btn" onclick="setNetaTool('desk',0)">なし</button><button class="tog-btn" onclick="setNetaTool('desk',1)">1台</button><button class="tog-btn" onclick="setNetaTool('desk',2)">2台</button></div></div>
+      <div class="field"><label>椅子</label><div class="btn-group" id="chair-group"><button class="tog-btn" onclick="setNetaTool('chair',0)">なし</button><button class="tog-btn" onclick="setNetaTool('chair',1)">1脚</button><button class="tog-btn" onclick="setNetaTool('chair',2)">2脚</button></div></div>
+      <div class="field"><label>ハンドマイク</label><div class="btn-group" id="mic-group"><button class="tog-btn" onclick="setNetaTool('mic',0)">なし</button><button class="tog-btn" onclick="setNetaTool('mic',1)">1本</button><button class="tog-btn" onclick="setNetaTool('mic',2)">2本</button></div></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="field"><label>途中音響</label><div class="btn-group" id="neta-on-group"><button class="tog-btn" onclick="setNetaToggle('on','有り')">有り</button><button class="tog-btn" onclick="setNetaToggle('on','無し')">無し</button></div></div>
+        <div class="field"><label>途中照明</label><div class="btn-group" id="neta-hari-group"><button class="tog-btn" onclick="setNetaToggle('hari','有り')">有り</button><button class="tog-btn" onclick="setNetaToggle('hari','無し')">無し</button></div></div>
+      </div>
+      <div class="field"><label>明転きっかけ</label><div class="btn-group" id="neta-meiten-group"><button class="tog-btn" onclick="setNetaKikake('meiten','がなり明転')">がなり明転</button><button class="tog-btn" onclick="setNetaKikake('meiten','台詞明転')">台詞明転</button><button class="tog-btn" onclick="setNetaKikake('meiten','その他')">その他</button></div><input id="neta-meiten-detail" placeholder="台詞 / 詳細" style="margin-top:8px; display:none;"></div>
+      <div class="field"><label>暗転きっかけ</label><div class="btn-group" id="neta-anten-group"><button class="tog-btn" onclick="setNetaKikake('anten','挨拶終わり')">挨拶終わり</button><button class="tog-btn" onclick="setNetaKikake('anten','台詞暗転')">台詞暗転</button><button class="tog-btn" onclick="setNetaKikake('anten','その他')">その他</button></div><input id="neta-anten-detail" placeholder="台詞 / 詳細" style="margin-top:8px; display:none;"></div>
+      <div class="field"><label>出囃子</label><input id="neta-debayashi" placeholder="タイトル / アーティスト名（例: Anything Goes!/大黒摩季）"></div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="saveNeta()" class="btn-primary btn-sm">保存</button>
+        <button onclick="hideNetaForm()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+const SUPABASE_URL = 'https://hmfbbpglitxggrfxghsd.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+let user=null, selectedUnitId=null, netaState={format:'',desk:0,chair:0,mic:0,on:'',hari:'',meiten:'',anten:''}
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session) { location.href='index.html'; return }
+  user=session.user
+  const { data: profile } = await sb.from('profiles').select('*').eq('id',user.id).single()
+  document.getElementById('nav-user').textContent=profile?.display_name||user.email
+  fetchUnits()
+}
+
+async function fetchUnits() {
+  const { data } = await sb.from('units').select('*').eq('user_id',user.id).order('created_at')
+  const list=document.getElementById('unit-list')
+  if (!data||!data.length) { list.innerHTML='<p class="hint">ユニットがまだありません</p>'; return }
+  list.innerHTML=data.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;"><button onclick="selectUnit('${u.id}','${u.name.replace(/'/g,"\\'")}') " style="background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;color:#0d6efd;padding:0;">${u.name}</button><button onclick="deleteUnit('${u.id}')" class="btn-sm btn-danger">削除</button></div>`).join('')
+}
+
+function showAddUnit() { document.getElementById('add-unit-form').style.display='block' }
+function hideAddUnit() { document.getElementById('add-unit-form').style.display='none'; document.getElementById('new-unit-name').value='' }
+
+async function addUnit() {
+  const name=document.getElementById('new-unit-name').value.trim()
+  if (!name) { alert('ユニット名を入力してください'); return }
+  await sb.from('units').insert({user_id:user.id,name}); hideAddUnit(); fetchUnits()
+}
+
+async function deleteUnit(id) {
+  if (!confirm('このユニットとネタをすべて削除しますか？')) return
+  await sb.from('units').delete().eq('id',id); document.getElementById('neta-section').style.display='none'; fetchUnits()
+}
+
+async function selectUnit(id,name) {
+  selectedUnitId=id; document.getElementById('selected-unit-name').textContent=`— ${name}`
+  document.getElementById('neta-section').style.display='block'; fetchNeta()
+}
+
+async function fetchNeta() {
+  const { data } = await sb.from('neta').select('*').eq('unit_id',selectedUnitId).order('created_at')
+  const list=document.getElementById('neta-list')
+  if (!data||!data.length) { list.innerHTML='<p class="hint">ネタがまだありません</p>'; return }
+  list.innerHTML=data.map(n=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;"><div><p style="font-weight:500;font-size:14px;">${n.title}</p><p class="hint">${n.format||''}${n.debayashi_full?' ・ '+n.debayashi_full:''}</p></div><div style="display:flex;gap:6px;"><button onclick='editNeta(${JSON.stringify(n).replace(/'/g,"\\'")} )' class="btn-sm">編集</button><button onclick="deleteNeta('${n.id}')" class="btn-sm btn-danger">削除</button></div></div>`).join('')
+}
+
+function showAddNeta() {
+  netaState={format:'',desk:0,chair:0,mic:0,on:'',hari:'',meiten:'',anten:''}
+  document.getElementById('neta-form-title').textContent='ネタを追加'
+  document.getElementById('edit-neta-id').value=''
+  ;['neta-title','neta-debayashi','neta-meiten-detail','neta-anten-detail'].forEach(id=>document.getElementById(id).value='')
+  document.querySelectorAll('#neta-form .tog-btn').forEach(b=>b.classList.remove('active-info','active-warn','active-ok'))
+  document.getElementById('neta-form').style.display='block'
+}
+function hideNetaForm() { document.getElementById('neta-form').style.display='none' }
+
+function editNeta(n) {
+  netaState={format:n.format||'',desk:n.tools_desk||0,chair:n.tools_chair||0,mic:n.tools_mic||0,on:n.chuku_on||'',hari:n.chuku_hari||'',meiten:n.meiten_type||'',anten:n.anten_type||''}
+  document.getElementById('neta-form-title').textContent='ネタを編集'
+  document.getElementById('edit-neta-id').value=n.id
+  document.getElementById('neta-title').value=n.title||''
+  document.getElementById('neta-debayashi').value=n.debayashi_full||''
+  if (n.format) { document.querySelectorAll('#neta-format-group .tog-btn').forEach(b=>b.classList.toggle('active-info',b.textContent===n.format)) }
+  if (n.chuku_on) { document.querySelectorAll('#neta-on-group .tog-btn').forEach(b=>b.classList.toggle(n.chuku_on==='有り'?'active-warn':'active-ok',b.textContent===n.chuku_on)) }
+  if (n.chuku_hari) { document.querySelectorAll('#neta-hari-group .tog-btn').forEach(b=>b.classList.toggle(n.chuku_hari==='有り'?'active-warn':'active-ok',b.textContent===n.chuku_hari)) }
+  if (n.meiten_type) { document.querySelectorAll('#neta-meiten-group .tog-btn').forEach(b=>b.classList.toggle('active-info',b.textContent===n.meiten_type)); const d=document.getElementById('neta-meiten-detail'); d.style.display=(n.meiten_type==='台詞明転'||n.meiten_type==='その他')?'block':'none'; d.value=n.meiten_detail||'' }
+  if (n.anten_type) { document.querySelectorAll('#neta-anten-group .tog-btn').forEach(b=>b.classList.toggle('active-info',b.textContent===n.anten_type)); const d=document.getElementById('neta-anten-detail'); d.style.display=(n.anten_type==='台詞暗転'||n.anten_type==='その他')?'block':'none'; d.value=n.anten_detail||'' }
+  document.getElementById('neta-form').style.display='block'
+}
+
+function setNetaFormat(f) { netaState.format=f; document.querySelectorAll('#neta-format-group .tog-btn').forEach(b=>b.classList.toggle('active-info',b.textContent===f)) }
+function setNetaTool(type,val) { netaState[type]=val; event.currentTarget.closest('.btn-group').querySelectorAll('.tog-btn').forEach(b=>b.classList.remove('active-info')); event.currentTarget.classList.add('active-info') }
+function setNetaToggle(key,val) { netaState[key]=val; event.currentTarget.closest('.btn-group').querySelectorAll('.tog-btn').forEach(b=>b.classList.remove('active-warn','active-ok')); event.currentTarget.classList.add(val==='有り'?'active-warn':'active-ok') }
+function setNetaKikake(type,val) { netaState[type]=val; event.currentTarget.closest('.btn-group').querySelectorAll('.tog-btn').forEach(b=>b.classList.remove('active-info')); event.currentTarget.classList.add('active-info'); document.getElementById(`neta-${type}-detail`).style.display=(val==='台詞明転'||val==='台詞暗転'||val==='その他')?'block':'none' }
+
+async function saveNeta() {
+  const title=document.getElementById('neta-title').value.trim()
+  if (!title) { alert('ネタタイトルを入力してください'); return }
+  const editId=document.getElementById('edit-neta-id').value
+  const payload={unit_id:selectedUnitId,title,format:netaState.format,tools_desk:netaState.desk,tools_chair:netaState.chair,tools_mic:netaState.mic,chuku_on:netaState.on||null,chuku_hari:netaState.hari||null,meiten_type:netaState.meiten||null,meiten_detail:document.getElementById('neta-meiten-detail').value||null,anten_type:netaState.anten||null,anten_detail:document.getElementById('neta-anten-detail').value||null,debayashi_full:document.getElementById('neta-debayashi').value||null}
+  if (editId) await sb.from('neta').update(payload).eq('id',editId)
+  else await sb.from('neta').insert(payload)
+  hideNetaForm(); fetchNeta()
+}
+
+async function deleteNeta(id) { if (!confirm('このネタを削除しますか？')) return; await sb.from('neta').delete().eq('id',id); fetchNeta() }
+function logout() { sb.auth.signOut().then(()=>location.href='index.html') }
+init()
+</script>
+</body>
+</html>
