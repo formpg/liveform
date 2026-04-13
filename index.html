@@ -8,20 +8,27 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="auth-page">
-<main style="max-width:400px; margin:4rem auto; padding:0 1rem;">
-  <h1 style="text-align:center; margin-bottom:8px;">きっかけ確認システム</h1>
-  <p style="text-align:center; color:#888; font-size:13px; margin-bottom:32px;">お笑いサークル ライブ運営ツール</p>
+<main style="max-width:400px;margin:4rem auto;padding:0 1rem;">
+  <h1 style="text-align:center;margin-bottom:8px;">きっかけ確認システム</h1>
+  <p style="text-align:center;color:#888;font-size:13px;margin-bottom:32px;">お笑いサークル ライブ運営ツール</p>
   <div class="card">
-    <div style="display:flex; gap:0; margin-bottom:24px; border-bottom:1px solid #eee;">
+    <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:1px solid #eee;">
       <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">ログイン</button>
       <button class="tab-btn" id="tab-register" onclick="switchTab('register')">新規登録</button>
     </div>
+
+    <!-- ログイン -->
     <div id="login-form">
       <div class="field"><label>メールアドレス</label><input type="email" id="login-email" placeholder="example@email.com"></div>
       <div class="field"><label>パスワード</label><input type="password" id="login-password" placeholder="パスワード"></div>
-      <p id="login-error" style="color:#dc3545; font-size:13px; margin-bottom:12px; display:none;"></p>
-      <button onclick="handleLogin()" class="btn-primary" style="width:100%;">ログイン</button>
+      <p id="login-error" style="color:#dc3545;font-size:13px;margin-bottom:12px;display:none;"></p>
+      <button onclick="handleLogin()" class="btn-primary" style="width:100%;margin-bottom:12px;">ログイン</button>
+      <div style="text-align:center;">
+        <button onclick="handleGuest()" style="background:none;border:none;color:#0d6efd;font-size:13px;cursor:pointer;text-decoration:underline;">ゲストとして使う</button>
+      </div>
     </div>
+
+    <!-- 新規登録 -->
     <div id="register-form" style="display:none;">
       <div class="field"><label>表示名</label><input type="text" id="reg-name" placeholder="例: 山田太郎"></div>
       <div class="field"><label>メールアドレス</label><input type="email" id="reg-email" placeholder="example@email.com"></div>
@@ -33,12 +40,13 @@
           <button class="tog-btn" id="role-staff" onclick="setRole('staff')">スタッフ</button>
         </div>
       </div>
-      <p id="reg-error" style="color:#dc3545; font-size:13px; margin-bottom:12px; display:none;"></p>
-      <p id="reg-success" style="color:#198754; font-size:13px; margin-bottom:12px; display:none;"></p>
+      <p id="reg-error" style="color:#dc3545;font-size:13px;margin-bottom:12px;display:none;"></p>
+      <p id="reg-success" style="color:#198754;font-size:13px;margin-bottom:12px;display:none;"></p>
       <button onclick="handleRegister()" class="btn-primary" style="width:100%;">登録する</button>
     </div>
   </div>
 </main>
+
 <script>
 const SUPABASE_URL = 'https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
@@ -48,6 +56,8 @@ let selectedRole = ''
 async function init() {
   const { data: { session } } = await sb.auth.getSession()
   if (session) redirectByRole(session.user)
+  // ゲストフラグがあればform.htmlへ
+  if (sessionStorage.getItem('guest_mode') === '1') location.href = 'form.html'
 }
 
 async function redirectByRole(user) {
@@ -69,6 +79,11 @@ function setRole(role) {
   document.getElementById('role-staff').classList.toggle('active-info', role === 'staff')
 }
 
+function handleGuest() {
+  sessionStorage.setItem('guest_mode', '1')
+  location.href = 'form.html'
+}
+
 async function handleLogin() {
   const email = document.getElementById('login-email').value.trim()
   const password = document.getElementById('login-password').value
@@ -76,6 +91,7 @@ async function handleLogin() {
   errEl.style.display = 'none'
   const { data, error } = await sb.auth.signInWithPassword({ email, password })
   if (error) { errEl.textContent = 'メールアドレスまたはパスワードが違います'; errEl.style.display = 'block'; return }
+  sessionStorage.removeItem('guest_mode')
   redirectByRole(data.user)
 }
 
