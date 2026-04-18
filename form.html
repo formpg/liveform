@@ -343,13 +343,23 @@ async function loadNeta(){
   netaList.forEach(n=>{const o=document.createElement('option');o.value=n.id;o.textContent=n.title;sel.appendChild(o)})
 }
 
-function applyNeta(){
+async function applyNeta(){
   const neta=netaList.find(n=>n.id===document.getElementById('neta-sel').value)
   if(!neta) return
   const combiEl=document.getElementById('combi-name')
+  const furiganaEl=document.getElementById('combi-furigana')
   const unitSel=document.getElementById('neta-unit-sel')
+  const unitId=unitSel.value
   const unitName=unitSel.options[unitSel.selectedIndex]?.text
+
+  // コンビ名を自動入力
   if(!combiEl.value&&unitName) combiEl.value=unitName
+
+  // ふりがなをユニットから取得して自動入力
+  if(!furiganaEl.value&&unitId){
+    const {data:unit}=await sb.from('units').select('furigana').eq('id',unitId).single()
+    if(unit?.furigana) furiganaEl.value=unit.furigana
+  }
   if(neta.format) setFormat(neta.format)
   if(neta.tools_desk>0){openTool('desk');setToolVal('desk',neta.tools_desk)}
   if(neta.tools_chair>0){openTool('chair');setToolVal('chair',neta.tools_chair)}
