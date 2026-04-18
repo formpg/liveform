@@ -140,7 +140,7 @@
               </div>
             </div>
           </div>
-          <!-- 照明有りのとき：台本提出方法 -->
+          <!-- 照明または音響有りのとき：台本提出方法 -->
           <div id="script-method-field" style="display:none;" class="field">
             <label>台本の提出方法</label>
             <div class="btn-group" id="kikake-script-method-group">
@@ -400,10 +400,12 @@ function setToggle(key, val) {
   const isOn=key==='chuku-on'
   document.getElementById(isOn?'on-ari':'hari-ari').classList.toggle('active-warn',val==='有り')
   document.getElementById(isOn?'on-nasi':'hari-nasi').classList.toggle('active-ok',val==='無し')
-  // 照明有りのとき台本提出方法を表示
-  if (key==='chuku-hari') {
-    document.getElementById('script-method-field').style.display = val==='有り' ? 'block' : 'none'
-    if (val!=='有り') { kikakeScriptMethod=''; document.querySelectorAll('#kikake-script-method-group .tog-btn').forEach(b=>b.classList.remove('active-info')) }
+  // 音響または照明どちらかが有りなら台本提出方法を表示
+  const needScript = toggleState['chuku-on']==='有り' || toggleState['chuku-hari']==='有り'
+  document.getElementById('script-method-field').style.display = needScript ? 'block' : 'none'
+  if (!needScript) {
+    kikakeScriptMethod=''
+    document.querySelectorAll('#kikake-script-method-group .tog-btn').forEach(b=>b.classList.remove('active-info'))
   }
 }
 function setToggleByVal(key, val) {
