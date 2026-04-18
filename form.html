@@ -392,7 +392,10 @@ let kikakeScriptMethod = ''
 
 function setKikakeScriptMethod(val) {
   kikakeScriptMethod = val
-  document.querySelectorAll('#kikake-script-method-group .tog-btn').forEach(b => b.classList.toggle('active-info', b.textContent===val))
+  document.querySelectorAll('#kikake-script-method-group .tog-btn').forEach(b => {
+    const matches = (val==='事前提出' && b.textContent.includes('事前提出')) || b.textContent===val
+    b.classList.toggle('active-info', matches)
+  })
 }
 
 function setToggle(key, val) {
