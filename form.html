@@ -575,6 +575,11 @@ async function handleSubmit(){
   try{
     const deb=document.getElementById('debayashi').value,debArtist=document.getElementById('debayashi-artist').value
     const debFull=deb==='ナシ'?'ナシ':[deb,debArtist].filter(Boolean).join('/')
+
+    // 既存エントリーがあるか確認
+    const {data:existing}=await sb.from('entries').select('id').eq('live_id',liveId).eq('combi_name',combiName).single()
+    const isUpdate=!!existing
+
     await sb.from('entries').upsert({
       live_id:liveId,
       combi_name:combiName,
@@ -589,7 +594,7 @@ async function handleSubmit(){
       anten_kikake:getAnten(),
       debayashi_full:debFull||null,
       script_method:kikakeScriptMethod||null,
-      is_updated:true,
+      is_updated:isUpdate,
       update_confirmed:false,
       updated_at:new Date().toISOString()
     },{onConflict:'live_id,combi_name'})
