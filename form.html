@@ -55,16 +55,20 @@
       </div>
 
       <div id="form-body" style="display:none;">
-        <!-- コンビ名・出番順 -->
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
-          <div class="field"><label>① コンビ名 <span class="req">*</span></label><input id="combi-name" placeholder="例: 誕生石" oninput="checkOnWarn()"></div>
-          <div class="field"><label>出番順</label><input id="order" type="number" placeholder="例: 3"></div>
+        <!-- コンビ名・ふりがな・出番順 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field">
+            <label>① コンビ名 <span class="req">*</span></label>
+            <input id="combi-name" placeholder="例: 誕生石" oninput="checkOnWarn()">
+          </div>
+          <div class="field">
+            <label>ふりがな</label>
+            <input id="combi-furigana" placeholder="例: たんじょうせき">
+          </div>
         </div>
-
-        <!-- ふりがな -->
-        <div class="field">
-          <label>ふりがな</label>
-          <input id="combi-furigana" placeholder="例: たんじょうせき">
+        <div class="field" style="margin-top:-8px;">
+          <label>出番順</label>
+          <input id="order" type="number" placeholder="例: 3" style="width:120px;">
         </div>
 
         <!-- 形式 -->
@@ -299,6 +303,34 @@ async function init(){
   })
   document.getElementById('on-card').style.display='block'
   document.getElementById('script-card').style.display='block'
+  initFurigana()
+}
+
+function initFurigana(){
+  const input=document.getElementById('combi-name')
+  const fg=document.getElementById('combi-furigana')
+  let reading=''
+  let manualEdit=false
+
+  fg.addEventListener('input',()=>{ manualEdit=true })
+
+  input.addEventListener('compositionstart',()=>{ reading='' })
+  input.addEventListener('compositionupdate',e=>{ reading=e.data })
+  input.addEventListener('compositionend',e=>{
+    if(manualEdit) return
+    // IMEの読み仮名からひらがなに変換
+    const src=reading||e.data||''
+    const hira=src.replace(/[\u30A1-\u30F6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60))
+    // ひらがな・カタカナのみ自動入力（漢字が含まれていたら無視）
+    if(/^[\u3041-\u3096\u30A1-\u30F6ー\s]+$/.test(hira)){
+      fg.value=fg.value+hira.replace(/[\u30A1-\u30F6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60))
+    }
+  })
+
+  // コンビ名を全部消したらふりがなもリセット
+  input.addEventListener('input',()=>{
+    if(!input.value){ fg.value=''; manualEdit=false }
+  })
 }
 
 async function loadNeta(){
