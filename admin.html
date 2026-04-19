@@ -236,10 +236,7 @@ async function renderStaff(liveId, panel){
       const initial=(p.display_name||p.email||'?')[0].toUpperCase()
       return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
         <div style="width:30px;height:30px;border-radius:50%;background:#cfe2ff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#084298;flex-shrink:0;">${initial}</div>
-        <div>
-          <p style="font-weight:500;font-size:13px;">${p.display_name||'名前未設定'}</p>
-          <p class="hint" style="font-size:12px;">${p.email||''}</p>
-        </div>
+        <p style="font-weight:500;font-size:13px;">${p.display_name||'名前未設定'}</p>
       </div>`
     }).join('')}
   `
