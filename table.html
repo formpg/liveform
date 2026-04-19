@@ -382,8 +382,8 @@ async function loadEntries(liveId,liveName,btn){
       <td>${e.itatsuki||'<span class="muted">−</span>'}</td>
       <td>${e.chuku_on==='有り'?'<span class="badge badge-warn">有り</span>':e.chuku_on==='無し'?'<span class="badge badge-ok">無し</span>':'<span class="muted">−</span>'}</td>
       <td>${e.chuku_hari==='有り'?'<span class="badge badge-warn">有り</span>':e.chuku_hari==='無し'?'<span class="badge badge-ok">無し</span>':'<span class="muted">−</span>'}</td>
-      <td>${e.meiten_kikake||'<span class="muted">−</span>'}</td>
-      <td>${e.anten_kikake||'<span class="muted">−</span>'}</td>
+      <td style="font-weight:400;">${e.meiten_kikake||'<span class="muted">−</span>'}</td>
+      <td style="font-weight:400;">${e.anten_kikake||'<span class="muted">−</span>'}</td>
       <td>
         <div>${e.debayashi_full||'<span class="muted">−</span>'}</div>
         <div style="font-size:10px;color:#aaa;margin-top:2px;">出囃子</div>
