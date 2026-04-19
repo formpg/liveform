@@ -122,8 +122,13 @@ async function saveLive(){
   if(!name){alert('ライブ名を入力してください');return}
   const payload={name,date:document.getElementById('live-date').value||null,deadline:document.getElementById('live-deadline').value||null}
   const editId=document.getElementById('edit-live-id').value
-  if(editId) await sb.from('lives').update(payload).eq('id',editId)
-  else await sb.from('lives').insert(payload)
+  if(editId){
+    const {error}=await sb.from('lives').update(payload).eq('id',editId)
+    if(error){alert('更新失敗: '+error.message);console.error(error);return}
+  } else {
+    const {error}=await sb.from('lives').insert(payload)
+    if(error){alert('作成失敗: '+error.message);console.error(error);return}
+  }
   cancelEdit();fetchLives()
 }
 
