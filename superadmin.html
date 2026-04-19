@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>システム管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <!-- ログイン画面 -->
+  <div id="login-screen" style="max-width:320px;margin:4rem auto;text-align:center;padding:0 1rem;">
+    <h1 style="margin-bottom:8px;">システム管理</h1>
+    <p style="color:#888;font-size:13px;margin-bottom:24px;">管理者専用ページ</p>
+    <div style="background:#fff;border:1px solid #eee;border-radius:10px;padding:24px;">
+      <div class="field"><label>パスワード</label><input type="password" id="pw-input" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter') login()"></div>
+      <button onclick="login()" class="btn-primary" style="width:100%;">ログイン</button>
+      <p id="pw-error" style="color:#dc3545;font-size:13px;margin-top:10px;display:none;">パスワードが違います</p>
+    </div>
+  </div>
+
+  <!-- 管理画面 -->
+  <div id="admin-screen" style="display:none;max-width:760px;margin:0 auto;padding:1.5rem 1rem 4rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h1>システム管理</h1>
+      <button onclick="doLogout()" class="btn-sm">ログアウト</button>
+    </div>
+
+    <!-- タブ -->
+    <div style="display:flex;border-bottom:1px solid #eee;margin-bottom:20px;">
+      <button class="tab-btn active" id="tab-users" onclick="switchTab('users')">ユーザー管理</button>
+      <button class="tab-btn" id="tab-lives" onclick="switchTab('lives')">ライブ管理</button>
+    </div>
+
+    <!-- ユーザー一覧 -->
+    <div id="panel-users">
+      <p class="hint" style="margin-bottom:12px;" id="user-count"></p>
+      <div id="user-list"></div>
+    </div>
+
+    <!-- ライブ管理 -->
+    <div id="panel-lives" style="display:none;">
+      <p class="hint" style="margin-bottom:12px;" id="live-count"></p>
+      <div id="live-list"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const SUPABASE_URL='https://hmfbbpglitxggrfxghsd.supabase.co'
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
+const SUPER_PASSWORD='LUDO2026'
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+
+function login(){
+  if(document.getElementById('pw-input').value===SUPER_PASSWORD){
+    sessionStorage.setItem('superadmin_authed','1')
+    document.getElementById('pw-error').style.display='none'
+    showAdmin()
+  } else {
+    document.getElementById('pw-error').style.display='block'
+  }
+}
+
+function doLogout(){
+  sessionStorage.removeItem('superadmin_authed')
+  document.getElementById('admin-screen').style.display='none'
+  document.getElementById('login-screen').style.display='block'
+  document.getElementById('pw-input').value=''
+}
+
+function showAdmin(){
+  document.getElementById('login-screen').style.display='none'
+  document.getElementById('admin-screen').style.display='block'
+  fetchUsers()
+}
+
+function switchTab(tab){
+  document.getElementById('tab-users').classList.toggle('active', tab==='users')
+  document.getElementById('tab-lives').classList.toggle('active', tab==='lives')
+  document.getElementById('panel-users').style.display=tab==='users'?'block':'none'
+  document.getElementById('panel-lives').style.display=tab==='lives'?'block':'none'
+  if(tab==='users') fetchUsers()
+  if(tab==='lives') fetchLives()
+}
+
+// ---- ユーザー管理 ----
+async function fetchUsers(){
+  const {data}=await sb.from('profiles').select('*').order('created_at',{ascending:false})
+  const users=data||[]
+  document.getElementById('user-count').textContent=`登録ユーザー（${users.length}名）`
+  document.getElementById('user-list').innerHTML=users.length?users.map(u=>`
+    <div style="border:1px solid #eee;border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <div>
+        <p style="font-weight:500;font-size:14px;">${u.display_name||'名前未設定'}</p>
+        <p class="hint" style="font-size:12px;">${u.email||''} ・ ${u.role==='staff'?'スタッフ':'演者'}</p>
+        <p class="hint" style="font-size:11px;">登録: ${u.created_at?u.created_at.slice(0,10):''}</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button onclick="toggleUserRole('${u.id}','${u.role}')" class="btn-sm">
+          ${u.role==='staff'?'演者に変更':'スタッフに変更'}
+        </button>
+        <button onclick="deleteUser('${u.id}','${(u.display_name||u.email||'').replace(/'/g,"\\'")}') " class="btn-sm btn-danger">削除</button>
+      </div>
+    </div>
+  `).join(''):'<p class="hint">ユーザーがいません</p>'
+}
+
+async function toggleUserRole(id, currentRole){
+  const newRole=currentRole==='staff'?'performer':'staff'
+  if(!confirm(`役割を「${newRole==='staff'?'スタッフ':'演者'}」に変更しますか？`))return
+  await sb.from('profiles').update({role:newRole}).eq('id',id)
+  fetchUsers()
+}
+
+async function deleteUser(id, name){
+  if(!confirm(`「${name}」を削除しますか？\nこの操作は取り消せません。`))return
+  await sb.from('profiles').delete().eq('id',id)
+  fetchUsers()
+}
+
+// ---- ライブ管理 ----
+async function fetchLives(){
+  const {data}=await sb.from('lives').select('*').order('created_at',{ascending:false})
+  const lives=data||[]
+  document.getElementById('live-count').textContent=`ライブ一覧（${lives.length}件）`
+  document.getElementById('live-list').innerHTML=lives.length?lives.map(l=>`
+    <div style="border:1px solid ${l.hidden?'#dee2e6':'#eee'};border-radius:8px;padding:12px 14px;margin-bottom:8px;background:${l.hidden?'#f8f9fa':'#fff'};">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div>
+          <p style="font-weight:500;font-size:14px;${l.hidden?'color:#888;':''}">${l.name}${l.hidden?'<span style="font-size:11px;color:#888;margin-left:8px;">（非表示）</span>':''}</p>
+          <p class="hint" style="font-size:12px;">${[l.date?`開催: ${l.date}`:'',l.deadline?`締切: ${l.deadline.replace('T',' ').slice(0,16)}`:''].filter(Boolean).join(' ・ ')}</p>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="toggleHide('${l.id}',${!!l.hidden})" class="btn-sm">${l.hidden?'表示に戻す':'非表示にする'}</button>
+          <button onclick="deleteLive('${l.id}','${l.name.replace(/'/g,"\\'")}') " class="btn-sm btn-danger">削除</button>
+        </div>
+      </div>
+    </div>
+  `).join(''):'<p class="hint">ライブがありません</p>'
+}
+
+async function toggleHide(id, currentHidden){
+  await sb.from('lives').update({hidden:!currentHidden}).eq('id',id)
+  fetchLives()
+}
+
+async function deleteLive(id, name){
+  if(!confirm(`「${name}」を完全に削除しますか？\n提出データも全て消えます。この操作は取り消せません。`))return
+  await sb.from('lives').delete().eq('id',id)
+  fetchLives()
+}
+
+if(sessionStorage.getItem('superadmin_authed')==='1') showAdmin()
+</script>
+</body>
+</html>
