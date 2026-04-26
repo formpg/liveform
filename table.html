@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>きっかけ表</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="style.css">
 <style>
 .tool-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
@@ -67,7 +67,7 @@
     <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #eee;position:sticky;top:0;background:#fff;">
       <span id="pdf-title" style="font-weight:600;font-size:15px;"></span>
       <div style="display:flex;gap:8px;">
-        <button onclick="savePdf()" class="btn-primary btn-sm">PDF保存</button>
+        <button id="pdf-save-btn" onclick="savePdf()" class="btn-primary btn-sm">PDF保存</button>
         <button onclick="document.getElementById('pdf-preview').style.display='none'" class="btn-sm">閉じる</button>
       </div>
     </div>
@@ -268,7 +268,6 @@ async function init(){
       nav.innerHTML=`<a href="form.html">フォーム提出</a><a href="table.html" class="active">きっかけ表</a><a href="mypage.html">マイページ</a><div class="nav-right"><span class="nav-user">${name}</span><button class="btn-sm" onclick="logout()">ログアウト</button></div>`
     }
   }
-
   const {data:livesRaw}=await sb.from('lives').select('*').eq('hidden',false)
   let displayLives=(livesRaw||[]).sort((a,b)=>{
     const da=a.date||'9999-99-99',db=b.date||'9999-99-99'
@@ -359,7 +358,6 @@ async function loadEntries(liveId,liveName,btn){
   currentEntries.forEach(e=>{
     const onFiles=onFilesMap[e.combi_name]||[]
     const hasScript=!!e.script_file_path
-    const scriptTxt=e.script_method?e.script_method:(hasScript?'事前提出':'−')
     const onCell=onFiles.length
       ?onFiles.map(f=>`<button onclick="requestDownload('${f.file_path}','${e.combi_name}_${f.file_label||'音響'}')" style="display:block;color:#0d6efd;font-size:12px;background:none;border:none;cursor:pointer;padding:0;margin-bottom:2px;">${f.file_label||'DL'}</button>`).join('')
       :e.chuku_on==='有り'?'<span style="color:#dc3545;font-weight:600;font-size:12px;">⚠️未</span>':'<span class="muted">−</span>'
@@ -403,6 +401,67 @@ async function loadEntries(liveId,liveName,btn){
   })
 }
 
+function openPdf(){
+  document.getElementById('pdf-title').textContent=`${currentLiveName} きっかけ表`
+  const rows=currentEntries.map(e=>`<tr>
+    <td class="nowrap">${e.order??'−'}</td>
+    <td style="font-weight:600;">${e.combi_name}${e.combi_furigana?`<div style="font-size:9px;color:#888;font-weight:400;">${e.combi_furigana}</div>`:''}</td>
+    <td class="nowrap">${e.format==='漫才'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 4px;border-radius:99px;font-size:9px;">漫才</span>':e.format==='ピン'?'<span style="background:#e2d9f3;color:#432874;padding:1px 4px;border-radius:99px;font-size:9px;">ピン</span>':e.format==='コント'?'<span style="background:#cfe2ff;color:#084298;padding:1px 4px;border-radius:99px;font-size:9px;">コント</span>':'−'}</td>
+    <td>${e.tools||'−'}</td>
+    <td class="nowrap">${e.itatsuki||'−'}</td>
+    <td class="nowrap">${e.chuku_on==='有り'?'<span style="background:#fff3cd;color:#856404;padding:1px 4px;border-radius:99px;font-size:9px;">有り</span>':e.chuku_on==='無し'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 4px;border-radius:99px;font-size:9px;">無し</span>':'−'}</td>
+    <td class="nowrap">${e.chuku_hari==='有り'?'<span style="background:#fff3cd;color:#856404;padding:1px 4px;border-radius:99px;font-size:9px;">有り</span>':e.chuku_hari==='無し'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 4px;border-radius:99px;font-size:9px;">無し</span>':'−'}</td>
+    <td>${e.meiten_kikake||'−'}</td>
+    <td>${e.anten_kikake||'−'}</td>
+  </tr>`).join('')
+  document.getElementById('pdf-body').innerHTML=`
+    <div style="margin-bottom:16px;"><h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">${currentLiveName}</h2><p style="font-size:12px;color:#888;">出力日: ${new Date().toLocaleDateString('ja-JP')}</p></div>
+    <table class="pdf-table">
+      <thead><tr><th>出番</th><th>コンビ名</th><th>形式</th><th>③道具</th><th>④板付</th><th>⑤音響</th><th>⑤照明</th><th>⑥明転</th><th>⑦暗転</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`
+  document.getElementById('pdf-preview').style.display='flex'
+}
+
+async function savePdf(){
+  const btn=document.getElementById('pdf-save-btn')
+  btn.textContent='生成中...';btn.disabled=true
+  try{
+    const {jsPDF}=window.jspdf
+    const body=document.getElementById('pdf-body')
+    const canvas=await html2canvas(body,{scale:2,useCORS:true,backgroundColor:'#ffffff'})
+    const imgData=canvas.toDataURL('image/jpeg',0.95)
+    const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'})
+    const pageW=pdf.internal.pageSize.getWidth()
+    const pageH=pdf.internal.pageSize.getHeight()
+    const imgW=pageW-20
+    const imgH=(canvas.height*imgW)/canvas.width
+    let remainH=imgH
+    let srcY=0
+    let firstPage=true
+    while(remainH>0){
+      if(!firstPage) pdf.addPage()
+      firstPage=false
+      const drawH=Math.min(remainH,pageH-20)
+      const srcH=(drawH/imgH)*canvas.height
+      const pageCanvas=document.createElement('canvas')
+      pageCanvas.width=canvas.width
+      pageCanvas.height=Math.ceil(srcH)
+      const ctx=pageCanvas.getContext('2d')
+      ctx.drawImage(canvas,0,Math.floor(srcY),canvas.width,Math.ceil(srcH),0,0,canvas.width,Math.ceil(srcH))
+      const pageImg=pageCanvas.toDataURL('image/jpeg',0.95)
+      pdf.addImage(pageImg,'JPEG',10,10,imgW,drawH)
+      remainH-=drawH
+      srcY+=srcH
+    }
+    pdf.save(`${currentLiveName}_きっかけ表.pdf`)
+  }catch(e){
+    alert('PDF生成に失敗しました: '+e.message)
+    console.error(e)
+  }
+  btn.textContent='PDF保存';btn.disabled=false
+}
+
 // ---- 編集フォーム ----
 function efReset(){
   efState={format:'',desk:null,chair:null,mic:null,other:null,on:'',hari:'',meiten:'',anten:'',itatsuki:null,nasiMode:false,scriptMethod:''}
@@ -423,7 +482,6 @@ function efReset(){
   document.getElementById('ef-debayashi-artist').value=''
   document.getElementById('ef-debayashi-artist').style.display='none'
 }
-
 function openEditForm(entryId){
   const e=currentEntries.find(e=>e.id===entryId);if(!e) return
   efReset()
@@ -465,7 +523,6 @@ function efGetToolsText(){const parts=[];const gv=(type,unit)=>{if(!efState[type
 function efGetItatsuki(){if(efState.itatsuki===null) return null;if(efState.itatsuki==='custom') return document.getElementById('ef-itatsuki-custom').value+'人';return efState.itatsuki+'人'}
 function efGetMeiten(){const t=efState.meiten;if(!t) return null;const d=document.getElementById('ef-meiten-detail').value;return(t==='台詞明転'||t==='その他')&&d?`${t}：${d}`:t}
 function efGetAnten(){const t=efState.anten;if(!t) return null;const d=document.getElementById('ef-anten-detail').value;return(t==='台詞暗転'||t==='その他')&&d?`${t}：${d}`:t}
-
 async function saveEditForm(){
   const entryId=document.getElementById('ef-entry-id').value
   const btn=document.getElementById('ef-save-btn');btn.textContent='保存中...';btn.disabled=true
@@ -486,38 +543,6 @@ async function saveEditForm(){
     loadEntries(currentLiveId,currentLiveName,document.querySelector('#live-btns .active-info'))
   }catch(e){alert('エラーが発生しました');console.error(e)}
   btn.textContent='変更を保存する';btn.disabled=false
-}
-
-function openPdf(){
-  document.getElementById('pdf-title').textContent=`${currentLiveName} きっかけ表`
-  const rows=currentEntries.map(e=>`<tr>
-    <td class="nowrap">${e.order??'−'}</td>
-    <td style="font-weight:600;">${e.combi_name}${e.combi_furigana?`<div style="font-size:9px;color:#888;font-weight:400;">${e.combi_furigana}</div>`:''}</td>
-    <td class="nowrap">${e.format==='漫才'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 4px;border-radius:99px;font-size:9px;">漫才</span>':e.format==='ピン'?'<span style="background:#e2d9f3;color:#432874;padding:1px 4px;border-radius:99px;font-size:9px;">ピン</span>':e.format==='コント'?'<span style="background:#cfe2ff;color:#084298;padding:1px 4px;border-radius:99px;font-size:9px;">コント</span>':'−'}</td>
-    <td>${e.tools||'−'}</td>
-    <td class="nowrap">${e.itatsuki||'−'}</td>
-    <td class="nowrap">${e.chuku_on==='有り'?'<span style="background:#fff3cd;color:#856404;padding:1px 4px;border-radius:99px;font-size:9px;">有り</span>':e.chuku_on==='無し'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 4px;border-radius:99px;font-size:9px;">無し</span>':'−'}</td>
-    <td class="nowrap">${e.chuku_hari==='有り'?'<span style="background:#fff3cd;color:#856404;padding:1px 4px;border-radius:99px;font-size:9px;">有り</span>':e.chuku_hari==='無し'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 4px;border-radius:99px;font-size:9px;">無し</span>':'−'}</td>
-    <td>${e.meiten_kikake||'−'}</td>
-    <td>${e.anten_kikake||'−'}</td>
-  </tr>`).join('')
-  document.getElementById('pdf-body').innerHTML=`
-    <div style="margin-bottom:16px;"><h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">${currentLiveName}</h2><p style="font-size:12px;color:#888;">出力日: ${new Date().toLocaleDateString('ja-JP')}</p></div>
-    <table class="pdf-table">
-      <thead><tr><th>出番</th><th>コンビ名</th><th>形式</th><th>③道具</th><th>④板付</th><th>⑤音響</th><th>⑤照明</th><th>⑥明転</th><th>⑦暗転</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`
-  document.getElementById('pdf-preview').style.display='flex'
-}
-
-async function savePdf(){
-  const title=currentLiveName
-  const bodyHtml=document.getElementById('pdf-body').innerHTML
-  const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${title} きっかけ表</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}th{background:#f5f5f5;padding:7px 6px;text-align:left;border:1px solid #ddd;font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;}td{padding:7px 6px;border:1px solid #ddd;vertical-align:top;word-break:break-all;overflow:hidden;}td.nowrap{white-space:nowrap;word-break:normal;}th:nth-child(1){width:4%;}th:nth-child(2){width:11%;}th:nth-child(3){width:6%;}th:nth-child(4){width:9%;}th:nth-child(5){width:5%;}th:nth-child(6){width:5%;}th:nth-child(7){width:5%;}th:nth-child(1){width:4%;}th:nth-child(2){width:13%;}th:nth-child(3){width:7%;}th:nth-child(4){width:11%;}th:nth-child(5){width:8%;}th:nth-child(6){width:8%;}th:nth-child(7){width:8%;}th:nth-child(8){width:20%;}th:nth-child(9){width:21%;}</style></head><body>${bodyHtml}</body></html>`
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'})
-  const url=URL.createObjectURL(blob)
-  const a=document.createElement('a');a.href=url;a.download=`${title}_きっかけ表.html`
-  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)
 }
 
 function logout(){sessionStorage.removeItem('guest_mode');sb.auth.signOut().then(()=>location.href='index.html')}
