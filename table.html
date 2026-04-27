@@ -17,7 +17,7 @@
 .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;}
 .modal-box{background:#fff;border-radius:10px;padding:24px;width:90%;max-width:360px;}
 
-/* PDF用テーブル：スマホでも収まるようコンパクトに */
+/* PDF用テーブル */
 .pdf-table{width:100%;border-collapse:collapse;font-size:9px;margin-bottom:16px;table-layout:fixed;}
 .pdf-table th{background:#f5f5f5;padding:4px 3px;text-align:left;border:1px solid #ddd;font-weight:600;font-size:8px;white-space:nowrap;overflow:hidden;}
 .pdf-table td{padding:4px 3px;border:1px solid #ddd;vertical-align:top;word-break:break-all;overflow:hidden;line-height:1.3;}
@@ -32,7 +32,6 @@
 .pdf-table th:nth-child(8){width:21%;}
 .pdf-table th:nth-child(9){width:21%;}
 
-/* PDFプレビュー本体もコンパクトに */
 #pdf-body{font-size:11px;}
 #pdf-body h2{font-size:14px !important;}
 #pdf-body p{font-size:10px !important;}
@@ -71,7 +70,7 @@
 
 <!-- PDF プレビュー -->
 <div id="pdf-preview" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:10px;width:95%;max-width:800px;max-height:90vh;overflow-y:auto;">
+  <div style="background:#fff;border-radius:10px;width:95%;max-width:900px;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #eee;position:sticky;top:0;background:#fff;">
       <span id="pdf-title" style="font-weight:600;font-size:14px;"></span>
       <div style="display:flex;gap:8px;">
@@ -427,7 +426,7 @@ function openPdf(){
       <h2 style="font-size:14px;font-weight:700;margin-bottom:2px;">${currentLiveName}</h2>
       <p style="font-size:10px;color:#888;">出力日: ${new Date().toLocaleDateString('ja-JP')}</p>
     </div>
-    <table class="pdf-table">
+    <table class="pdf-table" id="pdf-main-table">
       <thead><tr><th>出番</th><th>コンビ名</th><th>形式</th><th>③道具</th><th>④板付</th><th>⑤音響</th><th>⑤照明</th><th>⑥明転</th><th>⑦暗転</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`
@@ -439,43 +438,82 @@ async function savePdf(){
   btn.textContent='生成中...';btn.disabled=true
   try{
     const {jsPDF}=window.jspdf
+    const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'})
+    const pageW=pdf.internal.pageSize.getWidth()   // 297mm
+    const pageH=pdf.internal.pageSize.getHeight()  // 210mm
+    const margin=10
+    const printW=pageW-margin*2  // 277mm
+    const printH=pageH-margin*2  // 190mm
+
+    // PDF描画用のレンダリング幅（横向きA4基準で固定）
+    // スマホ・PCどちらから開いても同じ幅でレンダリングする
+    const renderWidth=900
+
     const body=document.getElementById('pdf-body')
 
-    // スマホ判定（画面幅600px未満）
-    const isMobile=window.innerWidth<600
-    const scale=isMobile?1.5:2
-
-    const canvas=await html2canvas(body,{
-      scale:scale,
-      useCORS:true,
-      backgroundColor:'#ffffff',
-      // スマホ時はプレビュー領域の実幅でレンダリングして収まるようにする
-      windowWidth:isMobile?body.offsetWidth:body.scrollWidth
+    // ---- ヘッダー部分（タイトル行）をキャプチャ ----
+    const headerEl=body.querySelector('div')  // タイトルdiv
+    const headerCanvas=await html2canvas(headerEl,{
+      scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth
     })
-    const imgData=canvas.toDataURL('image/jpeg',0.95)
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
-    const pageW=pdf.internal.pageSize.getWidth()
-    const pageH=pdf.internal.pageSize.getHeight()
-    const imgW=pageW-20
-    const imgH=(canvas.height*imgW)/canvas.width
-    let remainH=imgH
-    let srcY=0
-    let firstPage=true
-    while(remainH>0){
-      if(!firstPage) pdf.addPage()
-      firstPage=false
-      const drawH=Math.min(remainH,pageH-20)
-      const srcH=(drawH/imgH)*canvas.height
-      const pageCanvas=document.createElement('canvas')
-      pageCanvas.width=canvas.width
-      pageCanvas.height=Math.ceil(srcH)
-      const ctx=pageCanvas.getContext('2d')
-      ctx.drawImage(canvas,0,Math.floor(srcY),canvas.width,Math.ceil(srcH),0,0,canvas.width,Math.ceil(srcH))
-      const pageImg=pageCanvas.toDataURL('image/jpeg',0.95)
-      pdf.addImage(pageImg,'JPEG',10,10,imgW,drawH)
-      remainH-=drawH
-      srcY+=srcH
+    const headerMmH=(headerCanvas.height/headerCanvas.width)*printW
+
+    // ---- テーブルのヘッダー行をキャプチャ ----
+    const table=document.getElementById('pdf-main-table')
+    const thead=table.querySelector('thead')
+    const theadCanvas=await html2canvas(thead,{
+      scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth
+    })
+    const theadMmH=(theadCanvas.height/theadCanvas.width)*printW
+
+    // ---- 各行を個別にキャプチャしてmm高さを取得 ----
+    const rows=table.querySelectorAll('tbody tr')
+    const rowCanvases=[]
+    for(const row of rows){
+      const rc=await html2canvas(row,{
+        scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth
+      })
+      rowCanvases.push(rc)
     }
+
+    // ---- ページに行を割り付け ----
+    let isFirstPage=true
+    let curY=margin
+
+    const addHeader=async(p,y)=>{
+      // タイトル（1ページ目のみ）
+      if(isFirstPage){
+        const hImg=headerCanvas.toDataURL('image/jpeg',0.95)
+        p.addImage(hImg,'JPEG',margin,y,printW,headerMmH)
+        y+=headerMmH+2
+      }
+      // テーブルヘッダー（毎ページ）
+      const thImg=theadCanvas.toDataURL('image/jpeg',0.95)
+      p.addImage(thImg,'JPEG',margin,y,printW,theadMmH)
+      y+=theadMmH
+      return y
+    }
+
+    // 1ページ目：タイトル＋テーブルヘッダー
+    curY=await addHeader(pdf,curY)
+    isFirstPage=false
+
+    for(let i=0;i<rowCanvases.length;i++){
+      const rc=rowCanvases[i]
+      const rowMmH=(rc.height/rc.width)*printW
+
+      // このページに収まらない場合は改ページ
+      if(curY+rowMmH>pageH-margin){
+        pdf.addPage()
+        curY=margin
+        curY=await addHeader(pdf,curY)
+      }
+
+      const rImg=rc.toDataURL('image/jpeg',0.95)
+      pdf.addImage(rImg,'JPEG',margin,curY,printW,rowMmH)
+      curY+=rowMmH
+    }
+
     pdf.save(`${currentLiveName}_きっかけ表.pdf`)
   }catch(e){
     alert('PDF生成に失敗しました: '+e.message)
