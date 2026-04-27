@@ -100,7 +100,7 @@
 <div id="dl-modal" class="modal-overlay">
   <div class="modal-box">
     <h3 style="margin-bottom:16px;">ファイルをダウンロード</h3>
-    <p class="hint" style="margin-bottom:12px;">パスワードを入力してください</p>
+    <p class="hint" style="margin-bottom:12px;">このライブのダウンロード用パスワードを入力してください</p>
     <div class="field"><input type="password" id="dl-pw-input" placeholder="パスワード" onkeydown="if(event.key==='Enter') verifyDlPw()"></div>
     <p id="dl-pw-error" style="color:#dc3545;font-size:13px;margin-bottom:12px;display:none;">パスワードが違います</p>
     <div style="display:flex;gap:8px;">
@@ -245,10 +245,9 @@
 const SUPABASE_URL='https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
 const EDIT_PASSWORD='LUDO2026'
-const DL_PASSWORD='LUDO2026'
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 
-let userRole='guest',currentEntries=[],currentLiveName='',currentLiveId=null,editMode=false
+let userRole='guest',currentEntries=[],currentLiveName='',currentLiveId=null,currentLiveDlPassword='',editMode=false
 let efState={format:'',desk:null,chair:null,mic:null,other:null,on:'',hari:'',meiten:'',anten:'',itatsuki:null,nasiMode:false,scriptMethod:''}
 let pendingDlPath=null,pendingDlName=null
 
@@ -294,14 +293,14 @@ async function init(){
     const btn=document.createElement('button')
     btn.textContent=l.name;btn.className='tog-btn'
     btn.style.cssText='width:100%;white-space:normal;word-break:break-all;text-align:center;font-size:12px;padding:6px 4px;'
-    btn.onclick=()=>loadEntries(l.id,l.name,btn);container.appendChild(btn)
+    btn.onclick=()=>loadEntries(l.id,l.name,l.dl_password||'',btn);container.appendChild(btn)
   })
 }
 
 function requestEditMode(){
   if(editMode){
     editMode=false;document.getElementById('toggle-edit-btn').textContent='編集モード';document.getElementById('toggle-edit-btn').classList.remove('active-info')
-    if(currentLiveId) loadEntries(currentLiveId,currentLiveName,document.querySelector('#live-btns .active-info'));return
+    if(currentLiveId) loadEntries(currentLiveId,currentLiveName,currentLiveDlPassword,document.querySelector('#live-btns .active-info'));return
   }
   document.getElementById('edit-pw-input').value='';document.getElementById('edit-pw-error').style.display='none'
   document.getElementById('edit-modal').style.display='flex'
@@ -310,7 +309,7 @@ function verifyEditPw(){
   if(document.getElementById('edit-pw-input').value===EDIT_PASSWORD){
     editMode=true;document.getElementById('edit-modal').style.display='none'
     document.getElementById('toggle-edit-btn').textContent='編集中 ✓';document.getElementById('toggle-edit-btn').classList.add('active-info')
-    if(currentLiveId) loadEntries(currentLiveId,currentLiveName,document.querySelector('#live-btns .active-info'))
+    if(currentLiveId) loadEntries(currentLiveId,currentLiveName,currentLiveDlPassword,document.querySelector('#live-btns .active-info'))
   } else {document.getElementById('edit-pw-error').style.display='block'}
 }
 
@@ -322,7 +321,10 @@ function requestDownload(path,name){
 }
 function closeDlModal(){document.getElementById('dl-modal').style.display='none';pendingDlPath=null;pendingDlName=null}
 async function verifyDlPw(){
-  if(document.getElementById('dl-pw-input').value!==DL_PASSWORD){document.getElementById('dl-pw-error').style.display='block';return}
+  // ライブごとのパスワードで照合
+  if(document.getElementById('dl-pw-input').value!==currentLiveDlPassword){
+    document.getElementById('dl-pw-error').style.display='block';return
+  }
   document.getElementById('dl-modal').style.display='none'
   await downloadFile(pendingDlPath,pendingDlName)
   pendingDlPath=null;pendingDlName=null
@@ -342,10 +344,10 @@ async function confirmUpdate(entryId,el){
   el.parentElement.remove()
 }
 
-async function loadEntries(liveId,liveName,btn){
+async function loadEntries(liveId,liveName,dlPassword,btn){
   document.querySelectorAll('#live-btns .tog-btn').forEach(b=>b.classList.remove('active-info'))
   if(btn) btn.classList.add('active-info')
-  currentLiveId=liveId;currentLiveName=liveName
+  currentLiveId=liveId;currentLiveName=liveName;currentLiveDlPassword=dlPassword
   document.getElementById('print-btn').style.display='inline-block'
   const {data}=await sb.from('entries').select('*').eq('live_id',liveId).order('order',{ascending:true})
   currentEntries=data||[]
@@ -439,81 +441,53 @@ async function savePdf(){
   try{
     const {jsPDF}=window.jspdf
     const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'})
-    const pageW=pdf.internal.pageSize.getWidth()   // 297mm
-    const pageH=pdf.internal.pageSize.getHeight()  // 210mm
+    const pageW=pdf.internal.pageSize.getWidth()
+    const pageH=pdf.internal.pageSize.getHeight()
     const margin=10
-    const printW=pageW-margin*2  // 277mm
-    const printH=pageH-margin*2  // 190mm
-
-    // PDF描画用のレンダリング幅（横向きA4基準で固定）
-    // スマホ・PCどちらから開いても同じ幅でレンダリングする
+    const printW=pageW-margin*2
+    const printH=pageH-margin*2
     const renderWidth=900
-
     const body=document.getElementById('pdf-body')
-
-    // ---- ヘッダー部分（タイトル行）をキャプチャ ----
-    const headerEl=body.querySelector('div')  // タイトルdiv
-    const headerCanvas=await html2canvas(headerEl,{
-      scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth
-    })
+    const headerEl=body.querySelector('div')
+    const headerCanvas=await html2canvas(headerEl,{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth})
     const headerMmH=(headerCanvas.height/headerCanvas.width)*printW
-
-    // ---- テーブルのヘッダー行をキャプチャ ----
     const table=document.getElementById('pdf-main-table')
     const thead=table.querySelector('thead')
-    const theadCanvas=await html2canvas(thead,{
-      scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth
-    })
+    const theadCanvas=await html2canvas(thead,{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth})
     const theadMmH=(theadCanvas.height/theadCanvas.width)*printW
-
-    // ---- 各行を個別にキャプチャしてmm高さを取得 ----
     const rows=table.querySelectorAll('tbody tr')
     const rowCanvases=[]
     for(const row of rows){
-      const rc=await html2canvas(row,{
-        scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth
-      })
+      const rc=await html2canvas(row,{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:renderWidth})
       rowCanvases.push(rc)
     }
-
-    // ---- ページに行を割り付け ----
     let isFirstPage=true
     let curY=margin
-
     const addHeader=async(p,y)=>{
-      // タイトル（1ページ目のみ）
       if(isFirstPage){
         const hImg=headerCanvas.toDataURL('image/jpeg',0.95)
         p.addImage(hImg,'JPEG',margin,y,printW,headerMmH)
         y+=headerMmH+2
       }
-      // テーブルヘッダー（毎ページ）
       const thImg=theadCanvas.toDataURL('image/jpeg',0.95)
       p.addImage(thImg,'JPEG',margin,y,printW,theadMmH)
       y+=theadMmH
       return y
     }
-
-    // 1ページ目：タイトル＋テーブルヘッダー
     curY=await addHeader(pdf,curY)
     isFirstPage=false
-
     for(let i=0;i<rowCanvases.length;i++){
       const rc=rowCanvases[i]
       const rowMmH=(rc.height/rc.width)*printW
-
-      // このページに収まらない場合は改ページ
       if(curY+rowMmH>pageH-margin){
         pdf.addPage()
         curY=margin
         curY=await addHeader(pdf,curY)
       }
-
       const rImg=rc.toDataURL('image/jpeg',0.95)
       pdf.addImage(rImg,'JPEG',margin,curY,printW,rowMmH)
       curY+=rowMmH
     }
-
     pdf.save(`${currentLiveName}_きっかけ表.pdf`)
   }catch(e){
     alert('PDF生成に失敗しました: '+e.message)
@@ -600,7 +574,7 @@ async function saveEditForm(){
       debayashi_full:debFull||null,updated_at:new Date().toISOString()
     }).eq('id',entryId)
     closeEditForm()
-    loadEntries(currentLiveId,currentLiveName,document.querySelector('#live-btns .active-info'))
+    loadEntries(currentLiveId,currentLiveName,currentLiveDlPassword,document.querySelector('#live-btns .active-info'))
   }catch(e){alert('エラーが発生しました');console.error(e)}
   btn.textContent='変更を保存する';btn.disabled=false
 }
