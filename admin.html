@@ -6,6 +6,10 @@
 <title>ライブ管理</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="style.css">
+<style>
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;}
+.modal-box{background:#fff;border-radius:10px;padding:24px;width:90%;max-width:360px;}
+</style>
 </head>
 <body>
 <main>
@@ -57,6 +61,20 @@
   </div>
 </main>
 
+<!-- DLパスワードモーダル -->
+<div id="dl-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 style="margin-bottom:16px;">ファイルをダウンロード</h3>
+    <p class="hint" style="margin-bottom:12px;">このライブのダウンロード用パスワードを入力してください</p>
+    <div class="field"><input type="password" id="dl-pw-input" placeholder="パスワード" onkeydown="if(event.key==='Enter') verifyDlPw()"></div>
+    <p id="dl-pw-error" style="color:#dc3545;font-size:13px;margin-bottom:12px;display:none;">パスワードが違います</p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="verifyDlPw()" class="btn-primary" style="flex:1;">ダウンロード</button>
+      <button onclick="closeDlModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL='https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
@@ -64,6 +82,7 @@ const ADMIN_PASSWORD='LUDO2026'
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 
 const openPanels={}
+let pendingDlPath=null,pendingDlName=null,currentDlPassword=''
 
 function login(){
   if(document.getElementById('pw-input').value===ADMIN_PASSWORD){
@@ -89,7 +108,7 @@ function showAdmin(){
 }
 
 async function fetchLives(){
-  // dl_passwordは取得しない（セキュリティのため）
+  // dl_passwordは取得しない（adminからは見えないようにする）
   const {data}=await sb.from('lives').select('id,name,date,deadline,hidden').order('created_at',{ascending:false})
   const lives=data||[]
   document.getElementById('live-count').textContent=`作成済みライブ（${lives.length}件）`
@@ -138,14 +157,12 @@ async function saveLive(){
     deadline:document.getElementById('live-deadline').value||null,
   }
   if(!editId){
-    // 新規作成：パスワード必須
     const dlPassword=document.getElementById('live-dl-password').value.trim()
     if(!dlPassword){alert('ダウンロード用パスワードを入力してください');return}
     payload.dl_password=dlPassword
     const {error}=await sb.from('lives').insert(payload)
     if(error){alert('作成失敗: '+error.message);console.error(error);return}
   } else {
-    // 編集：パスワードは更新しない
     const {error}=await sb.from('lives').update(payload).eq('id',editId)
     if(error){alert('更新失敗: '+error.message);console.error(error);return}
   }
@@ -160,7 +177,6 @@ function startEdit(id,name,date,deadline){
   document.getElementById('form-title').textContent='ライブを編集'
   document.getElementById('save-btn').textContent='変更を保存'
   document.getElementById('cancel-btn').style.display='inline-block'
-  // 編集時はパスワード欄を非表示
   document.getElementById('dl-password-field').style.display='none'
   window.scrollTo({top:0,behavior:'smooth'})
 }
@@ -174,7 +190,6 @@ function cancelEdit(){
   document.getElementById('form-title').textContent='新しいライブを追加'
   document.getElementById('save-btn').textContent='ライブを作成'
   document.getElementById('cancel-btn').style.display='none'
-  // 新規作成モードに戻したらパスワード欄を再表示
   document.getElementById('dl-password-field').style.display='block'
 }
 
@@ -197,6 +212,11 @@ async function togglePanel(liveId,tab){
 
 async function renderEntries(liveId,panel){
   panel.innerHTML='<p class="hint" style="font-size:13px;">読み込み中...</p>'
+
+  // dl_passwordをこのタイミングで取得
+  const {data:liveData}=await sb.from('lives').select('dl_password').eq('id',liveId).single()
+  const liveDlPassword=liveData?.dl_password||''
+
   const {data:entries}=await sb.from('entries').select('*').eq('live_id',liveId).order('order',{ascending:true})
   if(!entries||!entries.length){panel.innerHTML='<p class="hint" style="font-size:13px;">提出がまだありません</p>';return}
   const combiNames=entries.map(e=>e.combi_name)
@@ -207,12 +227,12 @@ async function renderEntries(liveId,panel){
     const hasScript=!!e.script_file_path
     const onList=onFilesMap[e.combi_name]||[]
     const onCell=onList.length
-      ?onList.map(f=>`<button onclick="downloadFile('${f.file_path}','${e.combi_name}_${f.file_label||'音響'}')" style="display:block;color:#0d6efd;font-size:12px;background:none;border:none;cursor:pointer;padding:0;margin-bottom:2px;">${f.file_label||'DL'}</button>`).join('')
+      ?onList.map(f=>`<button onclick="requestDownload('${f.file_path}','${e.combi_name}_${f.file_label||'音響'}','${liveDlPassword}')" style="display:block;color:#0d6efd;font-size:12px;background:none;border:none;cursor:pointer;padding:0;margin-bottom:2px;">${f.file_label||'DL'}</button>`).join('')
       :e.chuku_on==='有り'?'<span style="color:#dc3545;font-weight:600;font-size:12px;">⚠️未</span>':'<span class="muted">−</span>'
     const scriptCell=e.script_method==='当日持参'
       ?'<span style="font-size:12px;color:#856404;">当日持参</span>'
       :hasScript
-        ?`<button onclick="downloadFile('${e.script_file_path}','${e.combi_name}_台本')" style="color:#0d6efd;font-size:12px;background:none;border:none;cursor:pointer;padding:0;">DL</button>`
+        ?`<button onclick="requestDownload('${e.script_file_path}','${e.combi_name}_台本','${liveDlPassword}')" style="color:#0d6efd;font-size:12px;background:none;border:none;cursor:pointer;padding:0;">DL</button>`
         :e.script_method==='事前提出'
           ?'<span style="color:#dc3545;font-size:12px;font-weight:600;">⚠️未</span>'
           :'<span class="muted">−</span>'
@@ -229,9 +249,9 @@ async function renderEntries(liveId,panel){
       <td>${e.chuku_hari==='有り'?'<span class="badge badge-warn">有り</span>':e.chuku_hari==='無し'?'<span class="badge badge-ok">無し</span>':'<span class="muted">−</span>'}</td>
       <td>${e.meiten_kikake||'<span class="muted">−</span>'}</td>
       <td>${e.anten_kikake||'<span class="muted">−</span>'}</td>
-      <td><div style="white-space:nowrap;">${e.debayashi_full||'<span class="muted">−</span>'}</div></td>
-      <td><div>${onCell}</div></td>
-      <td><div>${scriptCell}</div></td>
+      <td><div style="white-space:nowrap;">${e.debayashi_full||'<span class="muted">−</span>'}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">出囃子</div></td>
+      <td><div>${onCell}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">音源</div></td>
+      <td><div>${scriptCell}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">台本</div></td>
     </tr>`
   }).join('')
   panel.innerHTML=`
@@ -245,6 +265,47 @@ async function renderEntries(liveId,panel){
         <tbody>${rows}</tbody>
       </table>
     </div>`
+}
+
+function requestDownload(path,name,dlPassword){
+  pendingDlPath=path
+  pendingDlName=name
+  currentDlPassword=dlPassword
+  document.getElementById('dl-pw-input').value=''
+  document.getElementById('dl-pw-error').style.display='none'
+  document.getElementById('dl-modal').style.display='flex'
+}
+
+function closeDlModal(){
+  document.getElementById('dl-modal').style.display='none'
+  pendingDlPath=null;pendingDlName=null;currentDlPassword=''
+}
+
+async function verifyDlPw(){
+  if(!currentDlPassword){
+    // パスワード未設定ライブはそのままDL
+    document.getElementById('dl-modal').style.display='none'
+    await downloadFile(pendingDlPath,pendingDlName)
+    pendingDlPath=null;pendingDlName=null;currentDlPassword='';return
+  }
+  if(document.getElementById('dl-pw-input').value!==currentDlPassword){
+    document.getElementById('dl-pw-error').style.display='block';return
+  }
+  document.getElementById('dl-modal').style.display='none'
+  await downloadFile(pendingDlPath,pendingDlName)
+  pendingDlPath=null;pendingDlName=null;currentDlPassword=''
+}
+
+async function downloadFile(path,filename){
+  try{
+    const {data,error}=await sb.storage.from('kikkake-files').download(path)
+    if(error) throw error
+    const url=URL.createObjectURL(data)
+    const a=document.createElement('a')
+    a.href=url;a.download=filename||path.split('/').pop()
+    document.body.appendChild(a);a.click()
+    document.body.removeChild(a);URL.revokeObjectURL(url)
+  }catch(e){alert('ダウンロードに失敗しました: '+e.message)}
 }
 
 async function renderStaff(liveId,panel){
@@ -267,18 +328,6 @@ async function renderStaff(liveId,panel){
         <p style="font-weight:500;font-size:13px;">${p.display_name||'名前未設定'}</p>
       </div>`
     }).join('')}`
-}
-
-async function downloadFile(path,filename){
-  try{
-    const {data,error}=await sb.storage.from('kikkake-files').download(path)
-    if(error) throw error
-    const url=URL.createObjectURL(data)
-    const a=document.createElement('a')
-    a.href=url;a.download=filename||path.split('/').pop()
-    document.body.appendChild(a);a.click()
-    document.body.removeChild(a);URL.revokeObjectURL(url)
-  }catch(e){alert('ダウンロードに失敗しました: '+e.message)}
 }
 
 if(sessionStorage.getItem('admin_authed')==='1') showAdmin()
