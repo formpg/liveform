@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>使い方ガイド｜きっかけ確認システム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f6f2;
+  --surface:#ffffff;
+  --border:#e8e4dc;
+  --text:#1a1814;
+  --muted:#7a7570;
+  --accent-performer:#2d6a4f;
+  --accent-performer-light:#d8f3dc;
+  --accent-staff:#1d4e89;
+  --accent-staff-light:#dbeafe;
+  --accent-admin:#7b2d00;
+  --accent-admin-light:#fde8d8;
+  --radius:12px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  font-family:'Noto Sans JP',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.75;
+  padding-bottom:80px;
+}
+
+header{
+  background:var(--text);
+  color:#fff;
+  padding:48px 24px 40px;
+  text-align:center;
+}
+header h1{
+  font-size:clamp(22px,5vw,34px);
+  font-weight:700;
+  letter-spacing:-.01em;
+  margin-bottom:10px;
+}
+header p{
+  font-size:14px;
+  color:#a09890;
+}
+
+.tab-nav{
+  display:flex;
+  gap:0;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  overflow-x:auto;
+  position:sticky;
+  top:0;
+  z-index:100;
+  scrollbar-width:none;
+}
+.tab-nav::-webkit-scrollbar{display:none;}
+.tab-btn{
+  flex:1;
+  min-width:100px;
+  padding:14px 10px;
+  border:none;
+  background:none;
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:13px;
+  font-weight:500;
+  color:var(--muted);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .18s;
+  white-space:nowrap;
+}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active-performer{color:var(--accent-performer);border-bottom-color:var(--accent-performer);}
+.tab-btn.active-staff{color:var(--accent-staff);border-bottom-color:var(--accent-staff);}
+.tab-btn.active-admin{color:var(--accent-admin);border-bottom-color:var(--accent-admin);}
+
+.panel{display:none;max-width:680px;margin:0 auto;padding:32px 20px;}
+.panel.active{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+.section{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.section-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:18px 20px;
+  border-bottom:1px solid var(--border);
+}
+.section-icon{
+  width:36px;
+  height:36px;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  font-weight:500;
+  flex-shrink:0;
+}
+.section-title{
+  font-size:15px;
+  font-weight:700;
+}
+.section-body{
+  padding:18px 20px;
+}
+
+.steps{list-style:none;}
+.steps li{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
+}
+.steps li:last-child{border-bottom:none;}
+.step-num{
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  font-weight:500;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  margin-top:2px;
+}
+.step-text strong{
+  display:block;
+  font-weight:700;
+  margin-bottom:2px;
+}
+.step-text span{
+  font-size:13px;
+  color:var(--muted);
+}
+
+.hint-box{
+  border-radius:8px;
+  padding:14px 16px;
+  font-size:13px;
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.security-banner{
+  background:var(--text);
+  color:#fff;
+  border-radius:var(--radius);
+  padding:20px 22px;
+  margin-bottom:16px;
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+}
+.security-banner .icon{font-size:22px;flex-shrink:0;}
+.security-banner h3{font-size:14px;font-weight:700;margin-bottom:4px;}
+.security-banner p{font-size:13px;color:#b0a898;line-height:1.6;}
+
+/* performer */
+.performer .section-icon{background:var(--accent-performer-light);color:var(--accent-performer);}
+.performer .step-num{background:var(--accent-performer-light);color:var(--accent-performer);}
+.performer .hint-box{background:var(--accent-performer-light);color:var(--accent-performer);}
+
+/* staff */
+.staff .section-icon{background:var(--accent-staff-light);color:var(--accent-staff);}
+.staff .step-num{background:var(--accent-staff-light);color:var(--accent-staff);}
+.staff .hint-box{background:var(--accent-staff-light);color:var(--accent-staff);}
+
+/* admin */
+.admin .section-icon{background:var(--accent-admin-light);color:var(--accent-admin);}
+.admin .step-num{background:var(--accent-admin-light);color:var(--accent-admin);}
+.admin .hint-box{background:var(--accent-admin-light);color:var(--accent-admin);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>きっかけ確認システム<br>使い方ガイド</h1>
+  <p>あなたの役割にあわせて読んでください</p>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn" id="tab-performer" onclick="switchTab('performer')">出演者</button>
+  <button class="tab-btn" id="tab-staff" onclick="switchTab('staff')">スタッフ</button>
+  <button class="tab-btn" id="tab-admin" onclick="switchTab('admin')">ライブ作成者</button>
+</div>
+
+<!-- 出演者パネル -->
+<div class="panel performer" id="panel-performer">
+
+  <div class="security-banner">
+    <div class="icon">🔒</div>
+    <div>
+      <h3>音響・台本のダウンロードにはパスワードが必要です</h3>
+      <p>ダウンロード用パスワードはライブごとに異なります。ライブ作成者から受け取ってください。情報が外部に漏れにくい設計になっています。</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">01</div>
+      <p class="section-title">ログインまたはゲストとして入る</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>アカウント登録（推奨）</strong>
+            <span>表示名・メール・パスワードを入力して「演者」として登録。マイページでネタを事前保存できます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>ゲストとして使う</strong>
+            <span>登録なしでそのまま使えます。ただしネタの事前保存はできません。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">02</div>
+      <p class="section-title">きっかけを提出する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>ライブを選択</strong>
+            <span>フォーム提出ページでドロップダウンから参加するライブを選びます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>コンビ名・出番順・形式を入力</strong>
+            <span>コンビ名は正確に入力してください。同じコンビ名で再提出すると自動で上書きされます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>コントの場合は詳細を入力</strong>
+            <span>道具・板付人数・途中音響/照明・明転/暗転きっかけを選択します。漫才・ピンは出囃子のみ入力してください。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">4</div>
+          <div class="step-text">
+            <strong>出囃子を入力して提出</strong>
+            <span>曲名とアーティスト名を入力。出囃子がない場合は「ナシ」ボタンを押します。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">03</div>
+      <p class="section-title">音響ファイル・台本を提出する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>音響ファイルの提出</strong>
+            <span>コンビ名とライブを選択し、mp3/m4a等のファイルをアップロード。複数ある場合はラベルをつけて追加できます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>台本の提出</strong>
+            <span>「事前提出（PDF）」か「当日持参」を選択。事前提出の場合はPDFファイルをアップロードします。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">04</div>
+      <p class="section-title">マイページでネタを事前登録しておくと便利</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>ユニット（コンビ名）を登録</strong>
+            <span>マイページからユニット名とふりがなを登録します。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>ネタ情報を保存</strong>
+            <span>ネタごとに形式・道具・きっかけ・出囃子を保存しておきます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>フォームで自動入力</strong>
+            <span>フォーム提出ページの「保存済みネタから自動入力」でユニットとネタを選ぶだけで、毎回の入力が不要になります。</span>
+          </div>
+        </li>
+      </ul>
+      <div class="hint-box">
+        <div>同じコンビで複数のライブに出る場合、一度登録しておくだけで次回から楽になります。</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- スタッフパネル -->
+<div class="panel staff" id="panel-staff">
+
+  <div class="security-banner">
+    <div class="icon">🔒</div>
+    <div>
+      <h3>音響・台本のダウンロードにはパスワードが必要です</h3>
+      <p>ダウンロード用パスワードはライブごとに異なります。ライブ作成者から受け取ってください。情報が外部に漏れにくい設計になっています。</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">01</div>
+      <p class="section-title">スタッフページで担当ライブを登録する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>スタッフとしてログイン</strong>
+            <span>アカウント登録時に「スタッフ」を選択してください。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>担当ライブに「参加する」</strong>
+            <span>スタッフページのライブ一覧から担当するライブの「参加する」を押します。カレンダーに反映されます。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">02</div>
+      <p class="section-title">きっかけ表を確認する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>きっかけ表ページを開く</strong>
+            <span>担当ライブのカードをタップすると、提出一覧がすぐ下に展開されます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>内容を確認</strong>
+            <span>出番順・コンビ名・形式・道具・板付・音響/照明・明転/暗転きっかけ・出囃子が一覧で確認できます。⚠️は未提出を意味します。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">03</div>
+      <p class="section-title">PDF出力して印刷する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>ライブを開いた状態で「PDF出力」</strong>
+            <span>右上の「PDF出力」ボタンを押すとプレビューが表示されます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>「PDF保存」して印刷</strong>
+            <span>横向きA4で保存されます。そのまま印刷して本番当日のきっかけ表として使えます。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">04</div>
+      <p class="section-title">きっかけの内容を修正する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>「編集モード」ボタンを押す</strong>
+            <span>提出一覧の右上にある「編集モード」を押します。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>スタッフ用パスワードを入力</strong>
+            <span>パスワードはライブ作成者に確認してください。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>編集して保存</strong>
+            <span>各行の「編集」ボタンからきっかけ内容を修正できます。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- ライブ作成者パネル -->
+<div class="panel admin" id="panel-admin">
+
+  <div class="security-banner">
+    <div class="icon">🔒</div>
+    <div>
+      <h3>音響・台本のダウンロードにはパスワードが必要です</h3>
+      <p>ダウンロード用パスワードはライブごとに設定します。スタッフや関係者にのみ共有してください。情報が外部に漏れにくい設計になっています。</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">01</div>
+      <p class="section-title">ライブを作成する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>管理者パスワードでログイン</strong>
+            <span>ライブ管理ページ（admin）を開き、管理者パスワードを入力します。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>ライブ名・開催日・締切を入力</strong>
+            <span>提出締切を設定しておくと出演者に伝わりやすくなります。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>ダウンロード用パスワードを設定</strong>
+            <span>音響・台本のダウンロードに使うパスワードを決めます。<strong>作成後は確認できないので必ずメモしてください。</strong></span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">4</div>
+          <div class="step-text">
+            <strong>スタッフに共有する</strong>
+            <span>ダウンロード用パスワードとスタッフ用パスワードをスタッフに伝えてください。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">02</div>
+      <p class="section-title">提出状況を確認する</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>「提出一覧」を開く</strong>
+            <span>ライブカードの「提出一覧」ボタンで各コンビの提出状況が確認できます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>⚠️マークを確認</strong>
+            <span>音響・台本の列に⚠️がある場合は未提出です。出演者に連絡してください。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">03</div>
+      <p class="section-title">ライブを非表示にする</p>
+    </div>
+    <div class="section-body">
+      <ul class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>「非表示にする」ボタンを押す</strong>
+            <span>終了したライブや準備中のライブを一覧から隠せます。</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>データは保持される</strong>
+            <span>非表示にしても提出データは消えません。「表示に戻す」でいつでも復元できます。</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(role){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn')
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'))
+  document.getElementById('tab-'+role).classList.add('tab-btn','active-'+role)
+  document.getElementById('panel-'+role).classList.add('active')
+}
+switchTab('performer')
+</script>
+</body>
+</html>
