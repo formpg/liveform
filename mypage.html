@@ -50,8 +50,8 @@
     <div id="add-unit-form" style="display:none;margin-top:16px;border-top:1px solid #eee;padding-top:16px;">
       <p style="font-size:13px;font-weight:500;margin-bottom:12px;">新しいユニットを追加</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="field"><label>ユニット名</label><input id="new-unit-name" placeholder="例: 誕生石" oninput="predictUnitFurigana()"></div>
-        <div class="field"><label>ふりがな</label><input id="new-unit-furigana" placeholder="例: たんじょうせき"></div>
+        <div class="field"><label>ユニット名</label><input id="new-unit-name" placeholder="" oninput="predictUnitFurigana()"></div>
+        <div class="field"><label>ふりがな</label><input id="new-unit-furigana" placeholder=""></div>
       </div>
       <div style="display:flex;gap:8px;">
         <button onclick="addUnit()" class="btn-primary btn-sm">作成</button>
@@ -64,8 +64,8 @@
       <p style="font-size:13px;font-weight:500;margin-bottom:12px;">ユニットを編集</p>
       <input type="hidden" id="edit-unit-id">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="field"><label>ユニット名</label><input id="edit-unit-name" placeholder="例: 誕生石"></div>
-        <div class="field"><label>ふりがな</label><input id="edit-unit-furigana" placeholder="例: たんじょうせき"></div>
+        <div class="field"><label>ユニット名</label><input id="edit-unit-name" placeholder=""></div>
+        <div class="field"><label>ふりがな</label><input id="edit-unit-furigana" placeholder=""></div>
       </div>
       <div style="display:flex;gap:8px;">
         <button onclick="saveEditUnit()" class="btn-primary btn-sm">保存</button>
@@ -93,7 +93,7 @@
 
     <div class="field">
       <label>ネタタイトル <span class="req">*</span></label>
-      <input id="neta-title" placeholder="例: 病院コント">
+      <input id="neta-title" placeholder="例：裁判">
     </div>
 
     <div class="field">
