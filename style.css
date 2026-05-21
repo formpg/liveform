@@ -17,6 +17,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-se
 #site-title {
   font-size: 14px; font-weight: 500; color: #222; letter-spacing: 0.05em;
 }
+#site-header-right {
+  display: flex; align-items: center; gap: 12px;
+}
+#site-nav-user {
+  font-size: 13px; color: #888;
+}
 #site-version {
   font-size: 10px; color: #ccc; letter-spacing: 0.03em;
 }

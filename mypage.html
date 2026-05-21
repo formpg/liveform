@@ -18,17 +18,19 @@
 <div id="site-header">
   <div id="site-title-wrap">
     <div id="site-title-bar"></div>
-    <span id="site-title">きっかけ確認システム　ライブフォーム</span>
+    <span id="site-title">きっかけ確認システム<br>ライブフォーム</span>
   </div>
-  <span id="site-version">v1.2.0</span>
+  <div id="site-header-right">
+    <span id="site-nav-user"></span>
+    <span id="site-version">v1.2.0</span>
+  </div>
 </div>
 <nav>
   <a href="form.html">フォーム提出</a>
   <a href="table.html">きっかけ表</a>
   <a href="mypage.html" class="active">マイページ</a>
   <div class="nav-right">
-    <span class="nav-user" id="nav-user"></span>
-    <button class="btn-sm" onclick="logout()">ログアウト</button>
+        <button class="btn-sm" onclick="logout()">ログアウト</button>
   </div>
 </nav>
 <main>
@@ -262,7 +264,7 @@ async function init(){
   if(!session){location.href='index.html';return}
   user=session.user
   const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).single()
-  document.getElementById('nav-user').textContent=profile?.display_name||user.email
+  document.getElementById('site-nav-user').textContent=profile?.display_name||user.email
   document.getElementById('display-name-input').value=profile?.display_name||''
   if(profile?.role==='staff'){location.href='staff.html';return}
   fetchUnits()
@@ -272,7 +274,7 @@ async function saveDisplayName(){
   const name=document.getElementById('display-name-input').value.trim()
   if(!name){alert('表示名を入力してください');return}
   await sb.from('profiles').update({display_name:name}).eq('id',user.id)
-  document.getElementById('nav-user').textContent=name
+  document.getElementById('site-nav-user').textContent=name
   document.getElementById('name-saved').style.display='block'
   setTimeout(()=>document.getElementById('name-saved').style.display='none',3000)
 }
