@@ -8,8 +8,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-se
   border-bottom: 1px solid #f0f0f0;
   position: sticky; top: 0; z-index: 11;
 }
+#site-title-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+#site-title-bar {
+  width: 3px; height: 18px; background: #185FA5; border-radius: 2px; flex-shrink: 0;
+}
 #site-title {
-  font-size: 13px; font-weight: 700; color: #222; letter-spacing: 0.05em;
+  font-size: 14px; font-weight: 500; color: #222; letter-spacing: 0.05em;
 }
 #site-version {
   font-size: 10px; color: #ccc; letter-spacing: 0.03em;

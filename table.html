@@ -43,8 +43,11 @@
 </head>
 <body>
 <div id="site-header">
-  <span id="site-title">きっかけ確認システム　ライブフォーム</span>
-  <span id="site-version">v1.1.0</span>
+  <div id="site-title-wrap">
+    <div id="site-title-bar"></div>
+    <span id="site-title">きっかけ確認システム　ライブフォーム</span>
+  </div>
+  <span id="site-version">v1.2.0</span>
 </div>
 <nav id="main-nav">
   <div class="nav-right">
@@ -288,7 +291,7 @@ let currentDisplayRows=[]
 let currentUserId=null
 let verifiedLiveIds=[]  // verified=trueで参加しているライブIDリスト
 
-const APP_VERSION='v1.1.0'
+const APP_VERSION='v1.2.0'
 document.getElementById('site-version').textContent=APP_VERSION
 
 async function init(){
