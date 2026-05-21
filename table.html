@@ -45,13 +45,21 @@
 <div id="site-header">
   <div id="site-title-wrap">
     <div id="site-title-bar"></div>
-    <span id="site-title">きっかけ確認システム<br>ライブフォーム</span>
+    <span id="site-title">
+      <span id="site-title-main">ライブフォーム</span>
+      <span id="site-title-sub">きっかけ確認システム</span>
+    </span>
   </div>
   <div id="site-header-right">
     <span id="site-nav-user"></span>
     <span id="site-version">v1.2.0</span>
   </div>
 </div>
+<nav id="main-nav">
+  <div class="nav-right">
+    <button class="btn-sm" onclick="logout()">ログアウト</button>
+  </div>
+</nav>
 
 <!-- 編集モーダル -->
 <div id="edit-modal" class="modal-overlay">

@@ -12,19 +12,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-se
   display: flex; align-items: center; gap: 8px;
 }
 #site-title-bar {
-  width: 3px; height: 18px; background: #185FA5; border-radius: 2px; flex-shrink: 0;
+  width: 3px; height: 30px; background: #185FA5; border-radius: 2px; flex-shrink: 0;
 }
 #site-title {
-  font-size: 14px; font-weight: 500; color: #222; letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+#site-title-main {
+  display: block; font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px; font-weight: 400; color: #1a1a1a; letter-spacing: 0.04em;
+}
+#site-title-sub {
+  display: block; font-size: 10px; color: #888; letter-spacing: 0.1em; margin-top: 1px;
 }
 #site-header-right {
   display: flex; align-items: center; gap: 12px;
 }
 #site-nav-user {
-  font-size: 13px; color: #888;
+  font-size: 11px; color: #aaa;
 }
 #site-version {
-  font-size: 10px; color: #ccc; letter-spacing: 0.03em;
+  font-size: 10px; color: #ddd; letter-spacing: 0.03em;
 }
 
 nav {
