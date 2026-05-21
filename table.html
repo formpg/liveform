@@ -669,9 +669,19 @@ async function confirmUpdate(entryId,el){
 // ---- PDF ----
 function openPdf(){
   document.getElementById('pdf-title').textContent=`${currentLiveName} きっかけ表`
+  // 空白2行分のセル（未提出ユニット用）
+  const blankCell=`<td style="height:2.2em;"></td>`
   const rows=currentDisplayRows
-    .filter(r=>!r.dummy)
-    .map(({entry:e,order:dispOrder})=>`<tr>
+    .map(({entry:e,name:dummyName,order:dispOrder,dummy})=>{
+      if(dummy){
+        // 未提出ユニット：ユニット名のみ表示、他は空白2行分
+        return `<tr style="background:#fafafa;">
+    <td class="nowrap" style="height:2.6em;">${dispOrder??'−'}</td>
+    <td style="font-weight:600;height:2.6em;">${dummyName}<div style="font-size:8px;color:#dc3545;font-weight:400;">未提出</div></td>
+    ${blankCell}${blankCell}${blankCell}${blankCell}${blankCell}${blankCell}${blankCell}
+  </tr>`
+      }
+      return `<tr>
     <td class="nowrap">${dispOrder??e.order??'−'}</td>
     <td style="font-weight:600;">${e.combi_name}${e.combi_furigana?`<div style="font-size:8px;color:#888;font-weight:400;">${e.combi_furigana}</div>`:''}</td>
     <td class="nowrap">${e.format==='漫才'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 3px;border-radius:99px;font-size:8px;">漫才</span>':e.format==='ピン'?'<span style="background:#e2d9f3;color:#432874;padding:1px 3px;border-radius:99px;font-size:8px;">ピン</span>':e.format==='コント'?'<span style="background:#cfe2ff;color:#084298;padding:1px 3px;border-radius:99px;font-size:8px;">コント</span>':'−'}</td>
@@ -681,7 +691,8 @@ function openPdf(){
     <td class="nowrap">${e.chuku_hari==='有り'?'<span style="background:#fff3cd;color:#856404;padding:1px 3px;border-radius:99px;font-size:8px;">有り</span>':e.chuku_hari==='無し'?'<span style="background:#d1e7dd;color:#0f5132;padding:1px 3px;border-radius:99px;font-size:8px;">無し</span>':'−'}</td>
     <td>${e.meiten_kikake||'−'}</td>
     <td>${e.anten_kikake||'−'}</td>
-  </tr>`).join('')
+  </tr>`
+    }).join('')
   document.getElementById('pdf-body').innerHTML=`
     <div style="margin-bottom:10px;">
       <h2 style="font-size:14px;font-weight:700;margin-bottom:2px;">${currentLiveName}</h2>
