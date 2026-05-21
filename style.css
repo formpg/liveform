@@ -120,5 +120,6 @@ button:disabled { opacity: 0.6; cursor: wait; }
 @media (max-width: 480px) {
   main { padding: 1rem 0.75rem 4rem; }
   .btn-group { flex-wrap: wrap; }
+  nav .btn-sm { font-size: 10px; padding: 4px 8px; }
 }
 @media print { nav, button { display: none !important; } }
