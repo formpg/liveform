@@ -32,6 +32,52 @@
     <button class="btn-sm" onclick="logout()">ログアウト</button>
   </div>
 </nav>
+<main>
+  <h1 style="margin-bottom:20px;">スタッフページ</h1>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <button onclick="changeMonth(-1)">＜</button>
+      <h2 style="margin-bottom:0;" id="cal-title"></h2>
+      <button onclick="changeMonth(1)">＞</button>
+    </div>
+    <table class="calendar">
+      <thead><tr><th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr></thead>
+      <tbody id="cal-body"></tbody>
+    </table>
+    <div style="display:flex;gap:12px;margin-top:12px;font-size:12px;">
+      <span><span style="display:inline-block;width:12px;height:12px;background:#d1e7dd;border-radius:2px;margin-right:4px;"></span>担当ライブ</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#cfe2ff;border-radius:2px;margin-right:4px;"></span>今日</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:16px;">担当ライブを管理</h2>
+    <div id="live-list"></div>
+  </div>
+
+  <div id="live-detail" class="card" style="display:none;margin-top:16px;">
+    <h3 id="detail-title"></h3>
+    <p id="detail-date" class="hint"></p>
+    <a href="table.html" style="color:#0d6efd;font-size:14px;margin-top:8px;display:inline-block;">きっかけ表を見る →</a>
+  </div>
+</main>
+
+<!-- パスワード確認モーダル -->
+<div id="pw-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 style="margin-bottom:8px;">ライブに参加する</h3>
+    <p class="hint" style="margin-bottom:16px;">このライブのダウンロード用パスワードを入力してください。参加後は音響・台本をパスワードなしでダウンロードできます。</p>
+    <div class="field">
+      <input type="password" id="pw-modal-input" placeholder="パスワード" onkeydown="if(event.key==='Enter') confirmJoin()">
+    </div>
+    <p id="pw-modal-error" style="color:#dc3545;font-size:13px;margin-bottom:12px;display:none;">パスワードが違います</p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="confirmJoin()" class="btn-primary" style="flex:1;">参加する</button>
+      <button onclick="closePwModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const SUPABASE_URL = 'https://hmfbbpglitxggrfxghsd.supabase.co'
