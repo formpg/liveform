@@ -121,5 +121,6 @@ button:disabled { opacity: 0.6; cursor: wait; }
   main { padding: 1rem 0.75rem 4rem; }
   .btn-group { flex-wrap: wrap; }
   nav .btn-sm { font-size: 9px; padding: 3px 6px; }
+  nav a { padding: 10px 8px; font-size: 12px; }
 }
 @media print { nav, button { display: none !important; } }
