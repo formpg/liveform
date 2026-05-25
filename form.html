@@ -483,6 +483,39 @@ async function onLiveSelect(){
   document.getElementById('form-body').style.display=liveId?'block':'none'
   document.getElementById('combi-furigana').value=''
   await _buildCombiSelect(liveId,'')
+  // ネタが選択済みの場合、ライブ選択後もコンビ名・ふりがなを再適用する
+  await _reapplyNetaCombi()
+}
+
+async function _reapplyNetaCombi(){
+  const unitSel=document.getElementById('neta-unit-sel')
+  const netaSel=document.getElementById('neta-sel')
+  if(!netaSel?.value) return
+  const unitId=unitSel.value
+  const unitName=unitSel.options[unitSel.selectedIndex]?.text
+  if(!unitName) return
+  // コンビ名を再適用
+  const combiEl=document.getElementById('combi-name')
+  const sel=document.getElementById('combi-name-select')
+  if(sel.style.display!=='none'){
+    const matchOpt=[...sel.options].find(o=>o.value===unitName)
+    if(matchOpt){
+      sel.value=unitName
+      combiEl.style.display='none'
+    } else {
+      sel.value='__manual__'
+      combiEl.style.display=''
+      combiEl.value=unitName
+    }
+  } else {
+    combiEl.value=unitName
+  }
+  // ふりがなを再適用
+  const furiganaEl=document.getElementById('combi-furigana')
+  if(!furiganaEl.value&&unitId){
+    const {data:unit}=await sb.from('units').select('furigana').eq('id',unitId).single()
+    if(unit?.furigana) furiganaEl.value=unit.furigana
+  }
 }
 
 function onCombiNameInput(){ checkOnWarn() }
