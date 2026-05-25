@@ -71,11 +71,10 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="field">
             <label>① コンビ名 <span class="req">*</span></label>
-            <div id="koban-selector" style="display:none;margin-bottom:8px;">
-              <div id="koban-btns" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
-              <button id="manual-input-btn" class="tog-btn" onclick="enableManualCombi()" style="font-size:12px;">✏️ 手動入力</button>
-            </div>
-            <input id="combi-name" placeholder="" oninput="onCombiNameInput()">
+            <select id="combi-name-select" style="display:none;" onchange="onCombiSelectChange('')">
+              <option value="">選択してください</option>
+            </select>
+            <input id="combi-name" placeholder="" oninput="onCombiNameInput()" style="display:none;">
           </div>
           <div class="field">
             <label>ふりがな</label>
@@ -230,11 +229,10 @@
       </div>
       <div class="field">
         <label>コンビ名 <span class="req">*</span></label>
-        <div id="on-koban-selector" style="display:none;margin-bottom:8px;">
-          <div id="on-koban-btns" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
-          <button id="on-manual-input-btn" class="tog-btn" onclick="enableManualCombi('on')" style="font-size:12px;">✏️ 手動入力</button>
-        </div>
-        <input id="on-combi-name" placeholder="" oninput="checkOnWarn()">
+        <select id="on-combi-name-select" style="display:none;" onchange="onCombiSelectChange('on')">
+          <option value="">選択してください</option>
+        </select>
+        <input id="on-combi-name" placeholder="" oninput="checkOnWarn()" style="display:none;">
       </div>
       <div id="existing-on-files" style="display:none;margin-bottom:16px;">
         <p style="font-size:13px;font-weight:500;margin-bottom:8px;">提出済みファイル</p>
@@ -269,11 +267,10 @@
       </div>
       <div class="field">
         <label>コンビ名 <span class="req">*</span></label>
-        <div id="script-koban-selector" style="display:none;margin-bottom:8px;">
-          <div id="script-koban-btns" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
-          <button id="script-manual-input-btn" class="tog-btn" onclick="enableManualCombi('script')" style="font-size:12px;">✏️ 手動入力</button>
-        </div>
-        <input id="script-combi-name" placeholder="">
+        <select id="script-combi-name-select" style="display:none;" onchange="onCombiSelectChange('script')">
+          <option value="">選択してください</option>
+        </select>
+        <input id="script-combi-name" placeholder="" style="display:none;">
       </div>
       <div class="field">
         <label>提出方法 <span class="req">*</span></label>
@@ -371,8 +368,16 @@ async function applyNeta(){
   const unitId=unitSel.value
   const unitName=unitSel.options[unitSel.selectedIndex]?.text
 
-  // コンビ名を自動入力
-  if(!combiEl.value&&unitName) combiEl.value=unitName
+  // コンビ名を自動入力（香盤selectが表示中なら手動入力モードに切り替えてから入力）
+  if(!_getCombiValue('')&&unitName){
+    const sel=document.getElementById('combi-name-select')
+    if(sel.style.display!=='none'){
+      // selectを「手動入力」に切り替えてinputを表示
+      sel.value='__manual__'
+      combiEl.style.display=''
+    }
+    combiEl.value=unitName
+  }
 
   // ふりがなをユニットから取得して自動入力
   if(!furiganaEl.value&&unitId){
@@ -399,116 +404,90 @@ async function applyNeta(){
   }
 }
 
-let livesData=[]
-let currentKobanOrder=[]
+// ---- コンビ名セレクト共通処理 ----
+// prefix: '' = メインフォーム, 'on' = 音響, 'script' = 台本
+function _combiIds(prefix){
+  const p=prefix?prefix+'-':''
+  return {
+    selectId: p+'combi-name-select',
+    inputId:  prefix?(p+'combi-name'):'combi-name',
+  }
+}
+
+async function _buildCombiSelect(liveId, prefix){
+  const {selectId,inputId}=_combiIds(prefix)
+  const sel=document.getElementById(selectId)
+  const inp=document.getElementById(inputId)
+  // リセット
+  sel.innerHTML='<option value="">選択してください</option>'
+  sel.style.display='none'
+  inp.style.display=''
+  inp.value=''
+  if(!liveId) return
+  const {data:liveData}=await sb.from('lives').select('koban_order').eq('id',liveId).single()
+  if(!liveData?.koban_order?.length) return   // 香盤なし → input直接表示のまま
+  // 香盤あり → selectを表示、inputを隠す
+  liveData.koban_order.forEach(name=>{
+    const o=document.createElement('option')
+    o.value=name; o.textContent=name
+    sel.appendChild(o)
+  })
+  // 最後に「手動入力」オプション
+  const manual=document.createElement('option')
+  manual.value='__manual__'; manual.textContent='✏️ 手動入力'
+  sel.appendChild(manual)
+  sel.style.display=''
+  inp.style.display='none'
+}
+
+function onCombiSelectChange(prefix){
+  const {selectId,inputId}=_combiIds(prefix)
+  const sel=document.getElementById(selectId)
+  const inp=document.getElementById(inputId)
+  if(sel.value==='__manual__'){
+    inp.style.display=''
+    inp.value=''
+    inp.focus()
+    if(prefix==='on') checkOnWarn()
+  } else {
+    inp.style.display='none'
+    inp.value=sel.value   // 選択値を隠しinputにも反映（submit時に使用）
+    if(prefix==='on') checkOnWarn()
+  }
+}
+
+// コンビ名の実効値を返す（select選択 or 手動input）
+function _getCombiValue(prefix){
+  const {selectId,inputId}=_combiIds(prefix)
+  const sel=document.getElementById(selectId)
+  const inp=document.getElementById(inputId)
+  if(sel.style.display==='none'){
+    // 香盤なし → inputの値
+    return inp.value.trim()
+  }
+  if(sel.value==='__manual__') return inp.value.trim()
+  return sel.value.trim()
+}
 
 async function onLiveSelect(){
   const liveId=document.getElementById('live-select').value
   document.getElementById('form-body').style.display=liveId?'block':'none'
-  // コンビ名リセット
-  document.getElementById('combi-name').value=''
   document.getElementById('combi-furigana').value=''
-  document.getElementById('combi-name').readOnly=false
-  document.getElementById('combi-name').style.display=''
-  document.getElementById('koban-selector').style.display='none'
-  document.getElementById('koban-btns').innerHTML=''
-  document.getElementById('manual-input-btn').classList.remove('active-info')
-  currentKobanOrder=[]
-  if(!liveId) return
-  const {data:liveData}=await sb.from('lives').select('koban_order').eq('id',liveId).single()
-  if(liveData?.koban_order?.length){
-    currentKobanOrder=liveData.koban_order
-    renderKobanSelector(currentKobanOrder)
-  }
+  await _buildCombiSelect(liveId,'')
 }
 
-function renderKobanSelector(names){
-  const container=document.getElementById('koban-btns')
-  container.innerHTML=''
-  names.forEach(name=>{
-    const btn=document.createElement('button')
-    btn.className='tog-btn'
-    btn.textContent=name
-    btn.style.fontSize='13px'
-    btn.onclick=()=>selectKobanCombi(name,btn)
-    container.appendChild(btn)
-  })
-  document.getElementById('koban-selector').style.display='block'
-  document.getElementById('combi-name').style.display='none'
-  document.getElementById('manual-input-btn').classList.remove('active-info')
-}
-
-function selectKobanCombi(name,btn){
-  document.querySelectorAll('#koban-btns .tog-btn').forEach(b=>b.classList.remove('active-info'))
-  document.getElementById('manual-input-btn').classList.remove('active-info')
-  btn.classList.add('active-info')
-  document.getElementById('combi-name').value=name
-  document.getElementById('combi-name').style.display='none'
-  checkOnWarn()
-}
-
-function enableManualCombi(prefix){
-  const pre=prefix?prefix+'-':''
-  const btnContainerId=pre+'koban-btns'
-  const manualBtnId=pre+'manual-input-btn'
-  const inputId=pre?pre+'combi-name':'combi-name'
-  document.querySelectorAll('#'+btnContainerId+' .tog-btn').forEach(b=>b.classList.remove('active-info'))
-  document.getElementById(manualBtnId).classList.add('active-info')
-  const input=document.getElementById(inputId)
-  input.style.display=''
-  input.readOnly=false
-  input.value=''
-  input.focus()
-}
-
-function onCombiNameInput(){
-  checkOnWarn()
-}
+function onCombiNameInput(){ checkOnWarn() }
 
 async function onOnLiveSelect(){
+  const liveId=document.getElementById('on-live-select').value
+  await _buildCombiSelect(liveId,'on')
   checkOnWarn()
   loadExistingOnFiles()
-  const liveId=document.getElementById('on-live-select').value
-  await setupKobanSelector(liveId,'on','on-combi-name')
 }
 
 async function onScriptLiveSelect(){
   const liveId=document.getElementById('script-live-select').value
-  await setupKobanSelector(liveId,'script','script-combi-name')
-}
-
-async function setupKobanSelector(liveId,prefix,inputId){
-  const selectorId=prefix+'-koban-selector'
-  const btnsId=prefix+'-koban-btns'
-  const manualBtnId=prefix+'-manual-input-btn'
-  const input=document.getElementById(inputId)
-  input.value=''
-  input.style.display=''
-  document.getElementById(manualBtnId).classList.remove('active-info')
-  document.getElementById(selectorId).style.display='none'
-  document.getElementById(btnsId).innerHTML=''
-  if(!liveId) return
-  const {data:liveData}=await sb.from('lives').select('koban_order').eq('id',liveId).single()
-  if(!liveData?.koban_order?.length) return
-  const names=liveData.koban_order
-  const container=document.getElementById(btnsId)
-  names.forEach(name=>{
-    const btn=document.createElement('button')
-    btn.className='tog-btn'
-    btn.textContent=name
-    btn.style.fontSize='13px'
-    btn.onclick=()=>{
-      document.querySelectorAll('#'+btnsId+' .tog-btn').forEach(b=>b.classList.remove('active-info'))
-      document.getElementById(manualBtnId).classList.remove('active-info')
-      btn.classList.add('active-info')
-      input.value=name
-      input.style.display='none'
-      if(prefix==='on') checkOnWarn()
-    }
-    container.appendChild(btn)
-  })
-  document.getElementById(selectorId).style.display='block'
-  input.style.display='none'
+  await _buildCombiSelect(liveId,'script')
 }
 
 function setFormat(f){
@@ -607,7 +586,7 @@ function getAnten(){const t=kikakeState.anten;if(!t) return null;const d=documen
 
 async function checkOnWarn(){
   const liveId=document.getElementById('on-live-select').value
-  const combi=document.getElementById('on-combi-name').value.trim()
+  const combi=_getCombiValue('on')
   if(!liveId||!combi){document.getElementById('on-warn').style.display='none';return}
   const {data}=await sb.from('entries').select('chuku_on,on_file_path').eq('live_id',liveId).eq('combi_name',combi).single()
   document.getElementById('on-warn').style.display=(data&&data.chuku_on==='有り'&&!data.on_file_path)?'inline-flex':'none'
@@ -615,7 +594,7 @@ async function checkOnWarn(){
 
 async function loadExistingOnFiles(){
   const liveId=document.getElementById('on-live-select').value
-  const combi=document.getElementById('on-combi-name').value.trim()
+  const combi=_getCombiValue('on')
   const box=document.getElementById('existing-on-files')
   const list=document.getElementById('existing-on-list')
   if(!liveId||!combi){box.style.display='none';return}
@@ -652,7 +631,7 @@ function addOnFileRow(){
 
 async function handleOnSubmit(){
   const liveId=document.getElementById('on-live-select').value
-  const combi=document.getElementById('on-combi-name').value.trim()
+  const combi=_getCombiValue('on')
   if(!liveId||!combi){alert('ライブとコンビ名を入力してください');return}
   const rows=document.querySelectorAll('.on-file-row')
   const hasFile=[...rows].some(r=>r.querySelector('.on-file-input')?.files[0])
@@ -685,7 +664,7 @@ async function handleOnSubmit(){
 
 async function handleScriptSubmit(){
   const liveId=document.getElementById('script-live-select').value
-  const combi=document.getElementById('script-combi-name').value.trim()
+  const combi=_getCombiValue('script')
   if(!liveId||!combi||!scriptMethod){alert('ライブ、コンビ名、提出方法を選択してください');return}
   const btn=document.querySelector('#script-card .btn-primary')
   btn.textContent='提出中...';btn.disabled=true
@@ -708,7 +687,7 @@ async function handleScriptSubmit(){
 
 async function handleSubmit(){
   const liveId=document.getElementById('live-select').value
-  const combiName=document.getElementById('combi-name').value.trim()
+  const combiName=_getCombiValue('')
   if(!liveId||!combiName||!selectedFormat){alert('ライブ、コンビ名、形式は必須です');return}
   const btn=document.getElementById('submit-btn');btn.textContent='送信中...';btn.disabled=true
   try{
