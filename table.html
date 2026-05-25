@@ -52,7 +52,7 @@
   </div>
   <div id="site-header-right">
     <span id="site-nav-user"></span>
-    <span id="site-version">v1.2.0</span>
+    <span id="site-version">v1.3.0</span>
   </div>
 </div>
 <nav id="main-nav">
@@ -297,7 +297,7 @@ let currentDisplayRows=[]
 let currentUserId=null
 let verifiedLiveIds=[]  // verified=trueで参加しているライブIDリスト
 
-const APP_VERSION='v1.2.0'
+const APP_VERSION='v1.3.0'
 document.getElementById('site-version').textContent=APP_VERSION
 
 async function init(){
@@ -554,6 +554,8 @@ function parseKoban(text){
     line=line.replace(/^[０-９]+[.\．\s。)）、,]\s*/,'')
     line=line.replace(/^[\u2460-\u2473]\s*/,'')
     line=line.replace(/^[\u3251-\u325F\u32B1-\u32BF]\s*/,'')
+    // （）内の注釈を除去（全角・半角括弧両対応）
+    line=line.replace(/[\s　]*[（(][^）)]*[）)]/g,'')
     line=line.trim()
     if(line) result.push(line)
   }
