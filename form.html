@@ -368,15 +368,24 @@ async function applyNeta(){
   const unitId=unitSel.value
   const unitName=unitSel.options[unitSel.selectedIndex]?.text
 
-  // コンビ名を自動入力（香盤selectが表示中なら手動入力モードに切り替えてから入力）
+  // コンビ名を自動入力（香盤selectが表示中なら一致する選択肢を優先、なければ手動入力）
   if(!_getCombiValue('')&&unitName){
     const sel=document.getElementById('combi-name-select')
     if(sel.style.display!=='none'){
-      // selectを「手動入力」に切り替えてinputを表示
-      sel.value='__manual__'
-      combiEl.style.display=''
+      // 香盤の選択肢にコンビ名と一致するものがあればそれを選択
+      const matchOpt=[...sel.options].find(o=>o.value===unitName)
+      if(matchOpt){
+        sel.value=unitName
+        combiEl.style.display='none'
+      } else {
+        // 一致なし → 手動入力モード
+        sel.value='__manual__'
+        combiEl.style.display=''
+        combiEl.value=unitName
+      }
+    } else {
+      combiEl.value=unitName
     }
-    combiEl.value=unitName
   }
 
   // ふりがなをユニットから取得して自動入力
