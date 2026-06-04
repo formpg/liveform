@@ -177,7 +177,23 @@ async function saveDlPassword(liveId){
   setTimeout(()=>saved.style.display='none',3000)
 }
 
+function shouldAutoHideLive(dateStr){
+  if(!dateStr) return false
+  const eventDate=new Date(dateStr+'T00:00:00')
+  if(Number.isNaN(eventDate.getTime())) return false
+  const hideDate=new Date(eventDate)
+  hideDate.setDate(hideDate.getDate()+2)
+  return new Date() >= hideDate
+}
+
 async function toggleHide(id, currentHidden){
+  if(currentHidden){
+    const {data:live} = await sb.from('lives').select('date').eq('id',id).single()
+    if(live?.date && shouldAutoHideLive(live.date)){
+      alert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
+      return
+    }
+  }
   await sb.from('lives').update({hidden:!currentHidden}).eq('id',id)
   fetchLives()
 }
