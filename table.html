@@ -413,6 +413,11 @@ async function toggleLive(liveId,liveName,dlPassword){
   const body=document.getElementById(`body-${liveId}`)
   const header=document.getElementById(`header-${liveId}`)
   const chevron=document.getElementById(`chevron-${liveId}`)
+  const live=allLives.find(l=>l.id===liveId)
+  if(live&&shouldAutoHideLive(live.date)){
+    alert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
+    return
+  }
   if(openLiveId===liveId){
     body.classList.remove('open');header.classList.remove('active')
     chevron.textContent='›';chevron.style.transform=''
