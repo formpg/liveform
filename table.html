@@ -79,6 +79,7 @@
       <button onclick="clearDateSearch()" style="padding:9px 10px;font-size:12px;color:#888;border-radius:8px;" title="日付をクリア">✕</button>
     </div>
   </div>
+  <div id="live-alert" style="display:none;color:#856404;background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px;"></div>
   <p id="empty-msg" style="color:#888;display:none;">ライブが見つかりません</p>
   <div id="live-list"></div>
 </main>
@@ -316,8 +317,19 @@ let currentDisplayRows=[]
 let currentUserId=null
 let verifiedLiveIds=[]  // verified=trueで参加しているライブIDリスト
 
-const APP_VERSION='v1.3.0'
+const APP_VERSION='v1.4.0'
 document.getElementById('site-version').textContent=APP_VERSION
+
+function showLiveAlert(message){
+  const el=document.getElementById('live-alert')
+  el.textContent=message
+  el.style.display='block'
+}
+
+function clearLiveAlert(){
+  const el=document.getElementById('live-alert')
+  el.style.display='none'
+}
 
 async function init(){
   const isGuest=sessionStorage.getItem('guest_mode')==='1'
@@ -410,12 +422,13 @@ function filterLives(){
 function clearDateSearch(){document.getElementById('search-date').value='';filterLives()}
 
 async function toggleLive(liveId,liveName,dlPassword){
+  clearLiveAlert()
   const body=document.getElementById(`body-${liveId}`)
   const header=document.getElementById(`header-${liveId}`)
   const chevron=document.getElementById(`chevron-${liveId}`)
   const live=allLives.find(l=>l.id===liveId)
   if(live&&shouldAutoHideLive(live.date)){
-    alert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
+    showLiveAlert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
     return
   }
   if(openLiveId===liveId){
