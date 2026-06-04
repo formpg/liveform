@@ -84,6 +84,24 @@ const SUPABASE_URL = 'https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+function shouldAutoHideLive(dateStr){
+  if(!dateStr) return false
+  const eventDate=new Date(dateStr+'T00:00:00')
+  if(Number.isNaN(eventDate.getTime())) return false
+  const hideDate=new Date(eventDate)
+  hideDate.setDate(hideDate.getDate()+2)
+  return new Date() >= hideDate
+}
+
+async function autoHideOldLives(lives){
+  if(!lives?.length) return lives || []
+  const expired=lives.filter(l=>shouldAutoHideLive(l.date))
+  if(!expired.length) return lives
+  const ids=expired.map(l=>l.id)
+  await sb.from('lives').update({hidden:true}).in('id',ids)
+  return lives.filter(l=>!ids.includes(l.id))
+}
+
 let user = null
 let currentDate = new Date()
 let myLives = []
@@ -103,7 +121,8 @@ async function init() {
 }
 
 async function fetchData() {
-  const { data: lives } = await sb.from('lives').select('*').eq('hidden', false).order('date')
+  let { data: lives } = await sb.from('lives').select('*').eq('hidden', false).order('date')
+  lives = await autoHideOldLives(lives || [])
   allLives = lives || []
   const { data: sl } = await sb.from('staff_lives').select('live_id').eq('user_id', user.id)
   const myIds = (sl || []).map(s => s.live_id)

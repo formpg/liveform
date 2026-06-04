@@ -285,6 +285,25 @@
 const SUPABASE_URL='https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+
+function shouldAutoHideLive(dateStr){
+  if(!dateStr) return false
+  const eventDate=new Date(dateStr+'T00:00:00')
+  if(Number.isNaN(eventDate.getTime())) return false
+  const hideDate=new Date(eventDate)
+  hideDate.setDate(hideDate.getDate()+2)
+  return new Date() >= hideDate
+}
+
+async function autoHideOldLives(lives){
+  if(!lives?.length) return lives || []
+  const expired=lives.filter(l=>shouldAutoHideLive(l.date))
+  if(!expired.length) return lives
+  const ids=expired.map(l=>l.id)
+  await sb.from('lives').update({hidden:true}).in('id',ids)
+  return lives.filter(l=>!ids.includes(l.id))
+}
+
 const IGNORE_LINES=['OPMC','中MC','EDMC']
 
 let userRole='guest',allLives=[],openLiveId=null,currentEntries=[]
@@ -329,8 +348,9 @@ async function init(){
 }
 
 async function fetchLives(session){
-  const {data:livesRaw}=await sb.from('lives').select('*').eq('hidden',false)
-  allLives=(livesRaw||[]).sort((a,b)=>{
+  let {data:livesRaw}=await sb.from('lives').select('*').eq('hidden',false)
+  const filteredLives = await autoHideOldLives(livesRaw || [])
+  allLives=(filteredLives||[]).sort((a,b)=>{
     const da=a.date||'9999-99-99',db=b.date||'9999-99-99'
     if(da!==db) return da.localeCompare(db)
     const na=parseInt((a.name.match(/\d+/)||['0'])[0])

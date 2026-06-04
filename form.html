@@ -294,6 +294,24 @@ const SUPABASE_URL='https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 
+function shouldAutoHideLive(dateStr){
+  if(!dateStr) return false
+  const eventDate=new Date(dateStr+'T00:00:00')
+  if(Number.isNaN(eventDate.getTime())) return false
+  const hideDate=new Date(eventDate)
+  hideDate.setDate(hideDate.getDate()+2)
+  return new Date() >= hideDate
+}
+
+async function autoHideOldLives(lives){
+  if(!lives?.length) return lives || []
+  const expired=lives.filter(l=>shouldAutoHideLive(l.date))
+  if(!expired.length) return lives
+  const ids=expired.map(l=>l.id)
+  await sb.from('lives').update({hidden:true}).in('id',ids)
+  return lives.filter(l=>!ids.includes(l.id))
+}
+
 let user=null,isGuest=false,selectedFormat='',toggleState={'chuku-on':'','chuku-hari':''},kikakeState={meiten:'',anten:''},toolState={desk:null,chair:null,mic:null,other:null},itatsukiState=null,nasiMode=false,netaList=[],scriptMethod='',kikakeScriptMethod=''
 
 async function init(){
@@ -312,7 +330,8 @@ async function init(){
     const uSel=document.getElementById('neta-unit-sel')
     ;(units||[]).forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.name;uSel.appendChild(o)})
   }
-  const {data:lives}=await sb.from('lives').select('*').eq('hidden',false).order('created_at',{ascending:false})
+  let {data:lives}=await sb.from('lives').select('*').eq('hidden',false).order('created_at',{ascending:false})
+  lives = await autoHideOldLives(lives || [])
   ;['live-select','on-live-select','script-live-select'].forEach(id=>{
     const sel=document.getElementById(id)
     ;(lives||[]).forEach(l=>{const o=document.createElement('option');o.value=l.id;o.textContent=l.name;sel.appendChild(o)})
