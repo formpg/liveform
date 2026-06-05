@@ -178,6 +178,15 @@ function shouldAutoHideLive(dateStr){
   return new Date() >= hideDate
 }
 
+function isPastDate(dateStr){
+  if(!dateStr) return false
+  const eventDate=new Date(dateStr+'T00:00:00')
+  if(Number.isNaN(eventDate.getTime())) return false
+  const today=new Date()
+  today.setHours(0,0,0,0)
+  return eventDate < today
+}
+
 async function toggleHide(id, currentHidden){
   clearPageAlert()
   if(currentHidden){
@@ -202,6 +211,10 @@ async function saveLive(){
     deadline:document.getElementById('live-deadline').value||null,
   }
   const isExpired = payload.date && shouldAutoHideLive(payload.date)
+  if(!editId && payload.date && isPastDate(payload.date)){
+    showPageAlert('開催日を過ぎているライブは作成できません。ライブ開催日を修正してください。')
+    return
+  }
   if(!editId){
     const dlPassword=document.getElementById('live-dl-password').value.trim()
     if(!dlPassword){showPageAlert('ダウンロード用パスワードを入力してください');return}
