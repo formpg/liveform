@@ -26,7 +26,12 @@
       <h1>システム管理</h1>
       <button onclick="doLogout()" class="btn-sm">ログアウト</button>
     </div>
-    <div id="page-alert" style="display:none;color:#856404;background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;padding:12px;margin-bottom:16px;"></div>
+    <div id="page-alert-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#fff;color:#333;padding:24px;border-radius:14px;max-width:580px;width:100%;position:relative;box-shadow:0 18px 50px rgba(0,0,0,0.25);">
+        <button onclick="clearPageAlert()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;line-height:1;color:#333;cursor:pointer;">×</button>
+        <div id="page-alert-message" style="white-space:pre-line;line-height:1.8;font-size:15px;color:#333;"></div>
+      </div>
+    </div>
 
     <!-- タブ -->
     <div style="display:flex;border-bottom:1px solid #eee;margin-bottom:20px;">
@@ -54,17 +59,27 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const SUPER_PASSWORD='LUDO2026'
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 
+function formatAlertMessage(message){
+  return message
+    .split('。')
+    .map(part=>part.trim())
+    .filter(Boolean)
+    .map(part=>part + '。')
+    .join('\n')
+}
+
 function showPageAlert(message){
-  const el=document.getElementById('page-alert')
-  if(!el) return
-  el.textContent=message
-  el.style.display='block'
+  const overlay=document.getElementById('page-alert-overlay')
+  const msg=document.getElementById('page-alert-message')
+  if(!overlay||!msg) return
+  msg.textContent = formatAlertMessage(message)
+  overlay.style.display='flex'
 }
 
 function clearPageAlert(){
-  const el=document.getElementById('page-alert')
-  if(!el) return
-  el.style.display='none'
+  const overlay=document.getElementById('page-alert-overlay')
+  if(!overlay) return
+  overlay.style.display='none'
 }
 
 function login(){
