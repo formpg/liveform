@@ -26,6 +26,7 @@
       <h1>システム管理</h1>
       <button onclick="doLogout()" class="btn-sm">ログアウト</button>
     </div>
+    <div id="page-alert" style="display:none;color:#856404;background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;padding:12px;margin-bottom:16px;"></div>
 
     <!-- タブ -->
     <div style="display:flex;border-bottom:1px solid #eee;margin-bottom:20px;">
@@ -52,6 +53,19 @@ const SUPABASE_URL='https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
 const SUPER_PASSWORD='LUDO2026'
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+
+function showPageAlert(message){
+  const el=document.getElementById('page-alert')
+  if(!el) return
+  el.textContent=message
+  el.style.display='block'
+}
+
+function clearPageAlert(){
+  const el=document.getElementById('page-alert')
+  if(!el) return
+  el.style.display='none'
+}
 
 function login(){
   if(document.getElementById('pw-input').value===SUPER_PASSWORD){
@@ -117,7 +131,8 @@ async function toggleUserRole(id, currentRole){
 async function deleteUser(id, name){
   if(!confirm(`「${name}」を削除しますか？\nこの操作は取り消せません。`))return
   const {error}=await sb.rpc('delete_user_by_id',{target_user_id:id})
-  if(error){alert('削除失敗: '+error.message);console.error(error);return}
+  if(error){showPageAlert('削除失敗: '+error.message);console.error(error);return}
+  clearPageAlert()
   fetchUsers()
 }
 
@@ -169,9 +184,10 @@ async function fetchLives(){
 async function saveDlPassword(liveId){
   const input=document.getElementById(`pw-input-${liveId}`)
   const pw=input.value.trim()
-  if(!pw){alert('パスワードを入力してください');return}
+  if(!pw){showPageAlert('パスワードを入力してください');return}
   const {error}=await sb.from('lives').update({dl_password:pw}).eq('id',liveId)
-  if(error){alert('保存失敗: '+error.message);console.error(error);return}
+  if(error){showPageAlert('保存失敗: '+error.message);console.error(error);return}
+  clearPageAlert()
   const saved=document.getElementById(`pw-saved-${liveId}`)
   saved.style.display='block'
   setTimeout(()=>saved.style.display='none',3000)
@@ -187,10 +203,11 @@ function shouldAutoHideLive(dateStr){
 }
 
 async function toggleHide(id, currentHidden){
+  clearPageAlert()
   if(currentHidden){
     const {data:live} = await sb.from('lives').select('date').eq('id',id).single()
     if(live?.date && shouldAutoHideLive(live.date)){
-      alert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
+      showPageAlert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
       return
     }
   }

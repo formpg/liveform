@@ -28,6 +28,7 @@
       <h1>ライブ管理</h1>
       <button onclick="doLogout()" class="btn-sm">ログアウト</button>
     </div>
+    <div id="page-alert" style="display:none;color:#856404;background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;padding:12px;margin-bottom:16px;"></div>
 
     <div class="card" style="margin-bottom:24px;">
       <h3 id="form-title" style="margin-bottom:16px;">新しいライブを追加</h3>
@@ -80,7 +81,18 @@ const SUPABASE_URL='https://hmfbbpglitxggrfxghsd.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtZmJicGdsaXR4Z2dyZnhnaHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzQ4ODAsImV4cCI6MjA5MTU1MDg4MH0.lM2QipgSzFuHqS-IQ5_CndIBTiMQd43kvdMCXLcAkSA'
 const ADMIN_PASSWORD='LUDO2026'
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+function showPageAlert(message){
+  const el=document.getElementById('page-alert')
+  if(!el) return
+  el.textContent=message
+  el.style.display='block'
+}
 
+function clearPageAlert(){
+  const el=document.getElementById('page-alert')
+  if(!el) return
+  el.style.display='none'
+}
 const openPanels={}
 let pendingDlPath=null,pendingDlName=null,currentDlPassword=''
 
@@ -152,10 +164,11 @@ function shouldAutoHideLive(dateStr){
 }
 
 async function toggleHide(id, currentHidden){
+  clearPageAlert()
   if(currentHidden){
     const {data:live} = await sb.from('lives').select('date').eq('id',id).single()
     if(live?.date && shouldAutoHideLive(live.date)){
-      alert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
+      showPageAlert('開催日を2日過ぎているライブは表示できません。開催日を修正してください。')
       return
     }
   }
@@ -165,24 +178,29 @@ async function toggleHide(id, currentHidden){
 
 async function saveLive(){
   const name=document.getElementById('live-name').value.trim()
-  if(!name){alert('ライブ名を入力してください');return}
+  clearPageAlert()
+  if(!name){showPageAlert('ライブ名を入力してください');return}
   const editId=document.getElementById('edit-live-id').value
   const payload={
     name,
     date:document.getElementById('live-date').value||null,
     deadline:document.getElementById('live-deadline').value||null,
   }
+  const isExpired = payload.date && shouldAutoHideLive(payload.date)
   if(!editId){
     const dlPassword=document.getElementById('live-dl-password').value.trim()
-    if(!dlPassword){alert('ダウンロード用パスワードを入力してください');return}
+    if(!dlPassword){showPageAlert('ダウンロード用パスワードを入力してください');return}
     payload.dl_password=dlPassword
     const {error}=await sb.from('lives').insert(payload)
-    if(error){alert('作成失敗: '+error.message);console.error(error);return}
+    if(error){showPageAlert('作成失敗: '+error.message);console.error(error);return}
   } else {
     const {error}=await sb.from('lives').update(payload).eq('id',editId)
-    if(error){alert('更新失敗: '+error.message);console.error(error);return}
+    if(error){showPageAlert('更新失敗: '+error.message);console.error(error);return}
   }
   cancelEdit();fetchLives()
+  if(isExpired){
+    showPageAlert('開催日を2日過ぎているライブは表示されません。編集画面よりライブ開催日を修正してください')
+  }
 }
 
 function startEdit(id,name,date,deadline){
@@ -321,7 +339,7 @@ async function downloadFile(path,filename){
     a.href=url;a.download=filename||path.split('/').pop()
     document.body.appendChild(a);a.click()
     document.body.removeChild(a);URL.revokeObjectURL(url)
-  }catch(e){alert('ダウンロードに失敗しました: '+e.message)}
+  }catch(e){showPageAlert('ダウンロードに失敗しました: '+e.message)}
 }
 
 async function renderStaff(liveId,panel){
